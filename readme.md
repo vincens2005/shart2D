@@ -2,10 +2,14 @@
 
 We wanted to create an engine that accurately models the real world in 2D.
 
+Clone this repo with --recursive or do
+`git submodule update --init --remote --recursive`
+after cloning
+
 ## the rules
 
 - Heavier things fall faster (duh)
-- Shape affects, but does not determine weight
+- Shape affects, but does not determine, weight
 	- more sides = heavier
 - Velocity affects weight
 	- more x velocity = lighter

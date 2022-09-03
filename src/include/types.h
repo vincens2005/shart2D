@@ -1,4 +1,1 @@
-typedef struct {
-	float x;
-	float y;
-} Vector2;
+// idk if we'll need this

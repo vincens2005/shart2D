@@ -1,6 +1,11 @@
 #include "types.h"
 #include "raylib.h"
 
+
+typedef struct{
+	Vector2 dimensions;
+} epickStaticRectangle;
+
 typedef struct {
 	int weight;
 	Vector2 position;
@@ -11,4 +16,10 @@ typedef struct {
 typedef struct {
 	physicsObject base;
 	int radius;
-} physicsBall;
+} epickBall;
+
+typedef struct {
+  physicsObject base;
+  Vector2 dimensions;
+} epickBox;
+

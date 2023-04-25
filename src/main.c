@@ -29,11 +29,11 @@ Vector2 addOffset(Vector2 position){
 
 void drawShapes(){
 	// defining list of colors for epick
-	Color colors[] = {BLUE,RED,ORANGE,PURPLE,GREEN,LIME,VIOLET,DARKBLUE,SKYBLUE,MAROON,BROWN,BEIGE};
+	Color colors[12] = {BLUE,RED,ORANGE,PURPLE,GREEN,LIME,VIOLET,DARKBLUE,SKYBLUE,MAROON,BROWN,BEIGE};
 	//boxes
 	for (int i = 0; i < sizeof(boxArray)/sizeof(epickBox); i++){
 		epickBox box = boxArray[i];
-		DrawRectangleV(addOffset(box.base.position),box.dimensions,colors[i % (sizeof(colors)/sizeof(Color))] /*inputting colors*/);
+		DrawRectangleV(addOffset(box.base.position),box.dimensions,colors[i % 12] /*inputting colors*/);
 	}
 }
 

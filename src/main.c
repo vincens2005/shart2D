@@ -21,7 +21,7 @@ rigidBox boxArray[] = {
 	// }
 };
 
-float gravity = 10;
+float gravity = 1;
 
 Vector2 offset = {0,0};
 
@@ -29,16 +29,28 @@ Vector2 addOffset(Vector2 position){
 	return (Vector2){position.x + offset.x, position.y + offset.y};
 }
 
+bool isBoxCollided(rigidBox box1, rigidBox box2) {
+	return false;
+}
+
+physicsObject handleVelocity(physicsObject object) {
+	object.velocity.y += gravity;
+	object.position = (Vector2){object.position.x + object.velocity.x, object.position.y + object.velocity.y};
+	return object;
+}
+
+
 void drawShapes(){
 	// defining list of colors for epick
 	Color colors[12] = {BLUE,RED,ORANGE,PURPLE,GREEN,LIME,VIOLET,DARKBLUE,SKYBLUE,MAROON,BROWN,BEIGE};
 	//boxes
 	for (int i = 0; i < sizeof(boxArray)/sizeof(rigidBox); i++){
-		rigidBox box = boxArray[i];
-		box.base.velocity.y = box.base.velocity.y + gravity;
-		box.base.position = (Vector2){box.base.position.x + box.base.velocity.x, box.base.position.y + box.base.velocity.y};
-		printf("box y position: %f \n",box.base.position.y);
-		DrawRectangleV(addOffset(box.base.position),box.dimensions,colors[i % 12] /*inputting colors*/);
+		rigidBox *box = &boxArray[i];
+		box->base = handleVelocity(box->base);
+		// box->base.velocity.y = box->base.velocity.y + gravity;
+		// box->base.position = (Vector2){box->base.position.x + box->base.velocity.x, box->base.position.y + box->base.velocity.y};
+
+		DrawRectangleV(addOffset(box->base.position),box->dimensions,colors[i % 12] /*inputting colors*/);
 	}
 }
 

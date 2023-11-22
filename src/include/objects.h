@@ -4,7 +4,7 @@
 
 typedef struct{
 	Vector2 dimensions;
-} epickStaticRectangle;
+} staticRectangle;
 
 typedef struct {
 	int weight;
@@ -16,10 +16,10 @@ typedef struct {
 typedef struct {
 	physicsObject base;
 	int radius;
-} epickBall;
+} rigidBall;
 
 typedef struct {
   physicsObject base;
   Vector2 dimensions;
-} epickBox;
+} rigidBox;
 

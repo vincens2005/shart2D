@@ -9,16 +9,16 @@ rigidBox boxArray[] = {
 		.dimensions = {40,40},
 		.base.position = {40,40}
 	},
-	// {
-	// 	.base.weight = 1,
-	// 	.dimensions = {40,60},
-	// 	.base.position = {40,-40}
-	// },
-	// {
-	// 	.base.weight = 1,
-	// 	.dimensions = {100,60},
-	// 	.base.position = {-40,10}
-	// }
+	{
+		.base.weight = 1,
+		.dimensions = {40,60},
+		.base.position = {40,-40}
+	},
+	{
+		.base.weight = 1,
+		.dimensions = {100,60},
+		.base.position = {-40,10}
+	}
 };
 
 float gravity = 1;
@@ -33,10 +33,9 @@ bool isBoxCollided(rigidBox box1, rigidBox box2) {
 	return false;
 }
 
-physicsObject handleVelocity(physicsObject object) {
-	object.velocity.y += gravity;
-	object.position = (Vector2){object.position.x + object.velocity.x, object.position.y + object.velocity.y};
-	return object;
+void handleVelocity(physicsObject *object) {
+	object->velocity.y += gravity;
+	object->position = (Vector2){object->position.x + object->velocity.x, object->position.y + object->velocity.y};
 }
 
 
@@ -46,17 +45,14 @@ void drawShapes(){
 	//boxes
 	for (int i = 0; i < sizeof(boxArray)/sizeof(rigidBox); i++){
 		rigidBox *box = &boxArray[i];
-		box->base = handleVelocity(box->base);
-		// box->base.velocity.y = box->base.velocity.y + gravity;
-		// box->base.position = (Vector2){box->base.position.x + box->base.velocity.x, box->base.position.y + box->base.velocity.y};
-
+		handleVelocity(&box->base);
 		DrawRectangleV(addOffset(box->base.position),box->dimensions,colors[i % 12] /*inputting colors*/);
 	}
 }
 
 int main() {
 	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-	InitWindow(640, 480, "hyper realistic physics engine developed by epick game company llc");
+	InitWindow(640, 480, "hyper realistic 2D physics engine");
 	SetTargetFPS(60); // 60 fps
 	while (!WindowShouldClose()) {
 		// todo: physics calculations

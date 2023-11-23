@@ -23,7 +23,11 @@ void handleVelocity(physicsObject *object) {
 }
 
 void drawPhysicsPolygon(polygonCollisionShape *poly, Color color) {
-    DrawTriangleFan(poly->globalPointArray, poly->numPoints, color);
+	for (int i = 0; i < poly->numPoints; i++) {
+		printf("point %d applied translation: (%f, %f) \n",i , poly->globalPointArray[i].x, poly->globalPointArray[i].y);
+	}
+	printf("woaw %d \n",poly->numPoints);
+	DrawTriangleFan(poly->globalPointArray, poly->numPoints, color);
 }
 
 void applyPolygonTransform(physicsObject *object) {
@@ -36,12 +40,24 @@ void applyPolygonTransform(physicsObject *object) {
 
 		// Apply translation
 		poly->globalPointArray[i] = (Vector2){rotatedX + object->position.x, rotatedY + object->position.y};
-		printf("hi!! \n");
-		printf("point %d applied translation: (%f, %f) \n",i , poly->globalPointArray[i].x, poly->globalPointArray[i].y);
+		// printf("point %d applied translation: (%f, %f) \n",i , poly->globalPointArray[i].x, poly->globalPointArray[i].y);
 	}
 }
 
 void createRect(Vector2 center, Vector2 dimensions) {
+	if (objectCount >= MAX_OBJECTS) {
+		return;
+	}
+	// Create a square collision shape (adjust points as needed)
+	polygonCollisionShape *squareShape =  (polygonCollisionShape *)malloc(sizeof(polygonCollisionShape));
+	squareShape->numPoints = 4;
+	squareShape->pointArray = (Vector2 *)malloc(squareShape->numPoints * sizeof(Vector2));
+	squareShape->globalPointArray = (Vector2 *)malloc(squareShape->numPoints * sizeof(Vector2));
+	squareShape->pointArray[0] = (Vector2){-dimensions.x, -dimensions.y};
+	squareShape->pointArray[1] = (Vector2){dimensions.x, -dimensions.y};
+	squareShape->pointArray[2] = (Vector2){dimensions.x, dimensions.y};
+	squareShape->pointArray[3] = (Vector2){-dimensions.x, dimensions.y};
+
 	// Create a square physics object
 	physicsObject squareObject;
 	squareObject.weight = 1;
@@ -49,31 +65,16 @@ void createRect(Vector2 center, Vector2 dimensions) {
 	squareObject.velocity = (Vector2){0, 0};
 	squareObject.rotation = 0.0f;
 	squareObject.gravityStrength = 1.0f;
-	printf("made object!\n");
-	// Create a square collision shape (adjust points as needed)
-	polygonCollisionShape squareShape;
-	squareShape.numPoints = 4;
-	squareShape.pointArray = (Vector2 *)malloc(squareShape.numPoints * sizeof(Vector2));
-	squareShape.globalPointArray = (Vector2 *)malloc(squareShape.numPoints * sizeof(Vector2));
-	squareShape.pointArray[0] = (Vector2){-dimensions.x, -dimensions.y};
-	squareShape.pointArray[1] = (Vector2){dimensions.x, -dimensions.y};
-	squareShape.pointArray[2] = (Vector2){dimensions.x, dimensions.y};
-	squareShape.pointArray[3] = (Vector2){-dimensions.x, dimensions.y};
-	squareObject.collisionShape = &squareShape;
-	printf("made shape!\n");
-	applyPolygonTransform(&squareObject);
+
+	squareObject.collisionShape = squareShape;
+
 	// Add the square object to the array
-	if (objectCount < MAX_OBJECTS) {
-		objectArray[objectCount++] = squareObject;
-		// objectCount++;
-	} else {
-		// If the array is full, free the allocated memory
-		free(squareObject.collisionShape->pointArray);
-	}
+	objectArray[objectCount++] = squareObject;
+	applyPolygonTransform(&squareObject);
 }
 
 void initializeShapes() {
-	createRect((Vector2){10, 10}, (Vector2){20, 10});
+	createRect((Vector2){0, 0}, (Vector2){50, 50});
 }
 
 
@@ -87,11 +88,18 @@ void drawShapes(){
 		physicsObject *object = &objectArray[i];
 
 		handleVelocity(object);
-		printf("velocity: (%f, %f) \n", object->velocity.x, object->velocity.y);
-		printf("position: (%f, %f) \n", object->position.x, object->position.y);
 		applyPolygonTransform(object);
 		drawPhysicsPolygon(object->collisionShape, colors[i % 12] /*inputting colors*/);
-		printf("hi again!!\n");
+	}
+	// Vector2 triangle[4] = {(Vector2){0,0}, (Vector2){0,30},(Vector2){30,30}, (Vector2){30,0}};
+	// DrawTriangleFan(&triangle, 4, colors[0]);
+}
+
+void cleanupShapes() {
+	for (int i = 0; i < objectCount; i++) {
+		free(objectArray[i].collisionShape->pointArray);
+		free(objectArray[i].collisionShape->globalPointArray);
+		free(objectArray[i].collisionShape);
 	}
 }
 
@@ -111,6 +119,8 @@ int main() {
 
 		EndDrawing(); // drawing done!
 	}
+	// cleanupShapes();
+
 	CloseWindow();
 	return 0;
 }

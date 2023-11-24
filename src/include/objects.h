@@ -8,10 +8,11 @@ typedef struct {
 } polygonCollisionShape;
 
 typedef struct {
-	int weight;
+	float mass;
 	Vector2 position;
 	Vector2 velocity;
 	float rotation; // thank god it's 2d
 	float gravityStrength;
+	bool isStaticBody;
 	polygonCollisionShape *collisionShape;
 } physicsObject;

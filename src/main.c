@@ -47,30 +47,29 @@ void createPhysicsRect(Vector2 center, Vector2 dimensions, float rotation, bool 
 	if (objectCount >= MAX_OBJECTS) {
 		return;
 	}
-	// Create a square collision shape (adjust points as needed)
-	polygonCollisionShape *squareShape =  (polygonCollisionShape *)malloc(sizeof(polygonCollisionShape));
-	squareShape->numPoints = 4;
-	squareShape->pointArray = (Vector2 *)malloc(squareShape->numPoints * sizeof(Vector2));
-	squareShape->globalPointArray = (Vector2 *)malloc(squareShape->numPoints * sizeof(Vector2));
-	squareShape->pointArray[0] = (Vector2){dimensions.x * -0.5f, dimensions.y * -0.5f}; // top left
-	squareShape->pointArray[1] = (Vector2){dimensions.x * -0.5f, dimensions.y * 0.5f}; // bottom left
-	squareShape->pointArray[2] = (Vector2){dimensions.x * 0.5f, dimensions.y * 0.5f}; // bottom right
-	squareShape->pointArray[3] = (Vector2){dimensions.x * 0.5f, dimensions.y * -0.5f}; // top right
+	// Create a physics shape based on dimensions (using malloc to avoid a dangling pointer)
+	polygonCollisionShape *rectShape =  (polygonCollisionShape *)malloc(sizeof(polygonCollisionShape));
+	rectShape->numPoints = 4;
+	rectShape->pointArray = (Vector2 *)malloc(rectShape->numPoints * sizeof(Vector2));
+	rectShape->globalPointArray = (Vector2 *)malloc(rectShape->numPoints * sizeof(Vector2));
+	rectShape->pointArray[0] = (Vector2){dimensions.x * -0.5f, dimensions.y * -0.5f}; // top left
+	rectShape->pointArray[1] = (Vector2){dimensions.x * -0.5f, dimensions.y * 0.5f}; // bottom left
+	rectShape->pointArray[2] = (Vector2){dimensions.x * 0.5f, dimensions.y * 0.5f}; // bottom right
+	rectShape->pointArray[3] = (Vector2){dimensions.x * 0.5f, dimensions.y * -0.5f}; // top right
 
-	// Create a square physics object
-	physicsObject squareObject;
-	squareObject.mass = mass;
-	squareObject.position = center;
-	squareObject.velocity = (Vector2){0, 0};
-	squareObject.rotation = 0.0f;
-	squareObject.gravityStrength = 1.0f;
-	squareObject.isStaticBody = isStaticBody;
+	// create the physicsObject and assign collision shape
+	physicsObject object;
+	object.mass = mass;
+	object.position = center;
+	object.velocity = (Vector2){0, 0};
+	object.rotation = rotation;
+	object.gravityStrength = gravityStrength;
+	object.isStaticBody = isStaticBody;
+	object.collisionShape = rectShape;
 
-	squareObject.collisionShape = squareShape;
-
-	// Add the square object to the array
-	objectArray[objectCount++] = squareObject;
-	applyPolygonTransform(&squareObject);
+	// apply transforms _before_ adding to the array
+	applyPolygonTransform(&object);
+	objectArray[objectCount++] = object;
 }
 
 void initializeShapes() {

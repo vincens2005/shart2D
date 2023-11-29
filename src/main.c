@@ -3,6 +3,7 @@
 #include "math.h"
 #include "include/raylib.h"
 #include "include/objects.h"
+#include "include/collision.h"
 
 #define MAX_OBJECTS 10
 
@@ -39,9 +40,12 @@ void applyPolygonTransform(physicsObject *object) {
 
 		// Apply translation
 		poly->globalPointArray[i] = (Vector2){rotatedX + object->position.x, rotatedY + object->position.y};
-		// printf("point %d applied translation: (%f, %f) \n",i , poly->globalPointArray[i].x, poly->globalPointArray[i].y);
 	}
 }
+
+// void calculatePolyNormals(polygonCollisionShape *poly) {
+
+// }
 
 void createPhysicsRect(Vector2 center, Vector2 dimensions, float rotation, bool isStaticBody, float mass, float gravityStrength) {
 	if (objectCount >= MAX_OBJECTS) {
@@ -88,6 +92,12 @@ void physicsTick(){
 		// handle drawing
 		applyPolygonTransform(object);
 		drawPhysicsPolygon(object->collisionShape, colors[i % 12] /*inputting colors*/);
+		for (int i = 0; i < objectCount; i++) {
+			physicsObject *object2 = &objectArray[i];
+			if (object != object2) {
+				arePolygonsIntersecting(object->collisionShape->numPoints, object->collisionShape->globalPointArray,object2->collisionShape->numPoints, object2->collisionShape->globalPointArray);
+			}
+		}
 	}
 }
 
@@ -98,6 +108,10 @@ void cleanupShapes() {
 		free(objectArray[i].collisionShape);
 	}
 }
+
+// Vector2 projectVector2(Vector2 a, Vector2 b) {
+
+// }
 
 int main() {
 	SetConfigFlags(FLAG_WINDOW_RESIZABLE);

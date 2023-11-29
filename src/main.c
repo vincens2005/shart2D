@@ -12,10 +12,64 @@ int objectCount = 0;
 
 float gravity = 1.0;
 
-Vector2 offset = {0,0};
+void handleCollision(physicsObject *object1, physicsObject *object2, collisionResult result) {
+	  // Check if either object is static
+    if (object1->isStaticBody && object2->isStaticBody) {
+        // Both objects are static, no need to resolve collision
+        return;
+    }
 
-Vector2 addOffset(Vector2 position){
-	return (Vector2){position.x + offset.x, position.y + offset.y};
+    // Calculate the relative velocity of the objects
+    Vector2 relativeVelocity = (Vector2){
+        object2->velocity.x - object1->velocity.x,
+        object2->velocity.y - object1->velocity.y
+    };
+
+    // Calculate the relative normal velocity
+    float relativeNormalVelocity = relativeVelocity.x * result.normal.x + relativeVelocity.y * result.normal.y;
+
+    // If objects are moving away from each other, no need to resolve collision
+    if (relativeNormalVelocity > 0) {
+        return;
+    }
+
+    // Calculate the impulse along the normal
+    float impulse = -(1 + 0.3) * relativeNormalVelocity /
+                    (1 / object1->mass + 1 / object2->mass);
+
+    // Apply impulse to update velocities
+    if (!object1->isStaticBody) {
+        object1->velocity.x -= impulse * result.normal.x / object1->mass;
+        object1->velocity.y -= impulse * result.normal.y / object1->mass;
+
+        // If the objects have angular velocity, apply angular impulse
+        object1->angularVelocity -= impulse * result.normal.x * object2->mass;
+    }
+
+    if (!object2->isStaticBody) {
+        object2->velocity.x += impulse * result.normal.x / object2->mass;
+        object2->velocity.y += impulse * result.normal.y / object2->mass;
+
+        // If the objects have angular velocity, apply angular impulse
+        object2->angularVelocity += impulse * result.normal.x * object2->mass;
+    }
+
+    // Apply correction to the positions of the colliding objects
+    float correctionMagnitude = fmaxf(result.penetrationDepth - 0.1f, 0.0f);
+    Vector2 correction = (Vector2){
+        result.normal.x * correctionMagnitude,
+        result.normal.y * correctionMagnitude
+    };
+
+    if (!object1->isStaticBody) {
+        object1->position.x += correction.x * (object2->isStaticBody ? 1.0f : 0.5f);
+        object1->position.y += correction.y * (object2->isStaticBody ? 1.0f : 0.5f);
+    }
+
+    if (!object2->isStaticBody) {
+        object2->position.x -= correction.x * (object1->isStaticBody ? 1.0f : 0.5f);
+        object2->position.y -= correction.y * (object1->isStaticBody ? 1.0f : 0.5f);
+    }
 }
 
 void handleVelocity(physicsObject *object) {
@@ -23,7 +77,18 @@ void handleVelocity(physicsObject *object) {
 		return;
 	}
 	object->velocity.y += gravity;
+	for (int i = 0; i < objectCount; i++) {
+		physicsObject *object2 = &objectArray[i];
+		if (object != object2) {
+				collisionResult result = polygonIntersect(object->collisionShape->numPoints, object->collisionShape->globalPointArray,object2->collisionShape->numPoints, object2->collisionShape->globalPointArray);
+				if (result.isCollided) {
+					printf("askldjflasj KILL ME \n");
+					handleCollision(object, object2, result);
+				}
+		}
+	}
 	object->position = (Vector2){object->position.x + object->velocity.x, object->position.y + object->velocity.y};
+	object->rotation += object->angularVelocity;
 }
 
 void drawPhysicsPolygon(polygonCollisionShape *poly, Color color) {
@@ -81,7 +146,6 @@ void initializeShapes() {
 	createPhysicsRect((Vector2){960, 1000}, (Vector2){1920, 50}, 0.0f, true, 1.0f, 1.0f);
 }
 
-
 void physicsTick(){
 	// random colors to choose from
 	Color colors[12] = {BLUE,RED,ORANGE,PURPLE,GREEN,LIME,VIOLET,DARKBLUE,SKYBLUE,MAROON,BROWN,BEIGE};
@@ -92,12 +156,6 @@ void physicsTick(){
 		// handle drawing
 		applyPolygonTransform(object);
 		drawPhysicsPolygon(object->collisionShape, colors[i % 12] /*inputting colors*/);
-		for (int i = 0; i < objectCount; i++) {
-			physicsObject *object2 = &objectArray[i];
-			if (object != object2) {
-				arePolygonsIntersecting(object->collisionShape->numPoints, object->collisionShape->globalPointArray,object2->collisionShape->numPoints, object2->collisionShape->globalPointArray);
-			}
-		}
 	}
 }
 
@@ -108,10 +166,6 @@ void cleanupShapes() {
 		free(objectArray[i].collisionShape);
 	}
 }
-
-// Vector2 projectVector2(Vector2 a, Vector2 b) {
-
-// }
 
 int main() {
 	SetConfigFlags(FLAG_WINDOW_RESIZABLE);

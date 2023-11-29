@@ -11,8 +11,18 @@ typedef struct {
 	float mass;
 	Vector2 position;
 	Vector2 velocity;
+	float angularVelocity;
 	float rotation; // thank god it's 2d
 	float gravityStrength;
 	bool isStaticBody;
 	polygonCollisionShape *collisionShape;
 } physicsObject;
+
+typedef struct {
+  Vector2 normal;
+  Vector2 point;
+  float penetrationDepth;
+  bool isCollided;
+  // physicsObject *object1;
+  // physicsObject *object2;
+} collisionResult;

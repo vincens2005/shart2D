@@ -3,9 +3,22 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+float length(Vector2 v) {
+    return sqrt(v.x * v.x + v.y * v.y);
+}
 
+Vector2 normalize(Vector2 v) {
+    float len = length(v);
+    if (len != 0.0f) {
+        return (Vector2){v.x / len, v.y / len};
+    } else {
+        // Handle division by zero or very small length
+        return v;
+    }
+}
 
 bool isSeperatingAxis(Vector2 axis, int numPoints1, Vector2* points1, int numPoints2, Vector2* points2) {
+  axis = normalize(axis);
   float min1 = INFINITY;
   float max1 = -INFINITY;
   // find the extreme points on each axis for the first polygon
@@ -48,7 +61,6 @@ bool arePolygonsIntersecting(int numPoints1, Vector2* points1, int numPoints2, V
     }
   }
   // if there are no seperating axes, the shapes have indeed collided
-  float divideByZero = 10 / 0;
   return true;
 }
 

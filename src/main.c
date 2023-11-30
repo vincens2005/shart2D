@@ -5,6 +5,7 @@
 #include "include/objects.h"
 #include "include/collision.h"
 
+
 #define MAX_OBJECTS 10
 
 physicsObject objectArray[MAX_OBJECTS];
@@ -64,14 +65,24 @@ void handleCollision(physicsObject *object1, physicsObject *object2, collisionRe
 
 
 void handleVelocity(physicsObject *object) {
-	if (object->isStaticBody) {
+	if (object->isStaticBody)
 		return;
-	}
+	
 	object->velocity.y += gravity;
+
+	if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
+		if (CheckCollisionPointPoly(GetMousePosition(), object->collisionShape->globalPointArray, object->collisionShape->numPoints)) {
+			Vector2 delta = GetMouseDelta();
+			object->velocity.y = delta.y;
+			object->velocity.x = delta.x;
+			object->angularVelocity = 0;
+		}
+	}
+	
 	for (int i = 0; i < objectCount; i++) {
 		physicsObject *object2 = &objectArray[i];
 		if (object != object2) {
-				collisionResult result = polygonIntersect(object->collisionShape->numPoints, object->collisionShape->globalPointArray,object2->collisionShape->numPoints, object2->collisionShape->globalPointArray);
+				collisionResult result = polygonIntersect(object->collisionShape->numPoints, object->collisionShape->globalPointArray, object2->collisionShape->numPoints, object2->collisionShape->globalPointArray);
 				if (result.isCollided) {
 					handleCollision(object, object2, result);
 				}
@@ -122,6 +133,7 @@ void createPhysicsRect(Vector2 center, Vector2 dimensions, float rotation, bool 
 	object.isStaticBody = isStaticBody;
 	object.collisionShape = rectShape;
 	object.inertia = object.mass;
+	object.angularVelocity = 0;
 
 	// apply transforms _before_ adding to the array
 	applyPolygonTransform(&object);
@@ -131,7 +143,7 @@ void createPhysicsRect(Vector2 center, Vector2 dimensions, float rotation, bool 
 void initializeShapes() {
 	createPhysicsRect((Vector2){300, 100}, (Vector2){50, 50}, 0.0f, false, 1.0f, 1.0f);
 	createPhysicsRect((Vector2){0, 10}, (Vector2){50, 50}, 0.0f, false, 1.0f, 1.0f);
-	createPhysicsRect((Vector2){960, 1000}, (Vector2){1920, 50}, 0.0f, true, 1.0f, 1.0f);
+	createPhysicsRect((Vector2){0, 500}, (Vector2){1920, 50}, 0.0f, true, 1.0f, 1.0f);
 }
 
 void physicsTick(){

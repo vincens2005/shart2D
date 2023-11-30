@@ -1,3 +1,7 @@
+float vec2Dot(Vector2 v1, Vector2 v2) {
+  return (v1.x * v2.x) + (v1.y * v2.y);
+}
+
 
 float vec2Length(Vector2 v) {
   return sqrt((v.x * v.x) + (v.y * v.y));

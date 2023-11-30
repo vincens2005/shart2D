@@ -13,66 +13,9 @@ int objectCount = 0;
 float gravity = 1.0;
 
 void handleCollision(physicsObject *object1, physicsObject *object2, collisionResult result) {
-	  // Check if either object is static
-
-
-    if (object1->isStaticBody) {
-        // Both objects are static, no need to resolve collision
-        return;
-    }
-
-    // Calculate the relative velocity of the objects
-    Vector2 relativeVelocity = (Vector2){
-        object2->velocity.x - object1->velocity.x,
-        object2->velocity.y - object1->velocity.y
-    };
-
-    // Calculate the relative normal velocity
-    float relativeNormalVelocity = relativeVelocity.x * result.normal.x + relativeVelocity.y * result.normal.y;
-
-    // If objects are moving away from each other, no need to resolve collision
-    if (relativeNormalVelocity > 0) {
-        return;
-    }
-
-    // Calculate the impulse along the normal
-    float impulse = -(1 + 0.3) * relativeNormalVelocity /
-                    (1 / object1->mass + 1 / object2->mass);
-
-    // Apply impulse to update velocities
-    if (!object1->isStaticBody) {
-        object1->velocity.x -= impulse * result.normal.x / object1->mass;
-        object1->velocity.y -= impulse * result.normal.y / object1->mass;
-
-        // If the objects have angular velocity, apply angular impulse
-        object1->angularVelocity -= impulse * result.normal.x * object2->mass;
-    }
-
-    if (!object2->isStaticBody) {
-        object2->velocity.x += impulse * result.normal.x / object2->mass;
-        object2->velocity.y += impulse * result.normal.y / object2->mass;
-
-        // If the objects have angular velocity, apply angular impulse
-        object2->angularVelocity += impulse * result.normal.x * object2->mass;
-    }
-
-    // Apply correction to the positions of the colliding objects
-    float correctionMagnitude = fmaxf(result.penetrationDepth - 0.1f, 0.0f);
-    Vector2 correction = (Vector2){
-        result.normal.x * correctionMagnitude,
-        result.normal.y * correctionMagnitude
-    };
-
-    if (!object1->isStaticBody) {
-        object1->position.x += correction.x * (object2->isStaticBody ? 1.0f : 0.5f);
-        object1->position.y += correction.y * (object2->isStaticBody ? 1.0f : 0.5f);
-    }
-
-    if (!object2->isStaticBody) {
-        object2->position.x -= correction.x * (object1->isStaticBody ? 1.0f : 0.5f);
-        object2->position.y -= correction.y * (object1->isStaticBody ? 1.0f : 0.5f);
-    }
+	return;
 }
+
 
 void handleVelocity(physicsObject *object) {
 	if (object->isStaticBody) {
@@ -84,8 +27,6 @@ void handleVelocity(physicsObject *object) {
 		if (object != object2) {
 				collisionResult result = polygonIntersect(object->collisionShape->numPoints, object->collisionShape->globalPointArray,object2->collisionShape->numPoints, object2->collisionShape->globalPointArray);
 				if (result.isCollided) {
-					printf("askldjflasj KILL ME \n");
-					printf("resulting max normal (%f, %f) \n", result.normal.x, result.normal.y);
 					handleCollision(object, object2, result);
 				}
 		}

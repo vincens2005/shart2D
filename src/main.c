@@ -13,7 +13,53 @@ int objectCount = 0;
 float gravity = 1.0;
 
 void handleCollision(physicsObject *object1, physicsObject *object2, collisionResult result) {
-	return;
+	Vector2 axis = result.normal;
+
+	if (object1->position.x * axis.x + object1->position.y * axis.y <
+		object2->position.x * axis.x + object2->position.y * axis.y)
+		axis.x = -axis.x;
+
+	Vector2 velocity1 = object1->velocity;
+	Vector2 velocity2 = object2->velocity;
+	float mass1 = object1->mass;
+	float mass2 = object2->mass;
+
+	Vector2 velocity;
+	velocity.x = velocity1.x - velocity2.x;
+	velocity.y = velocity1.y - velocity2.y;
+
+	float velocityProjection = velocity.x * axis.x + velocity.y * axis.y;
+
+	float elasticity = 0.5f; // Adjust this value as needed
+	float impulse = (-(1.0f + elasticity) * velocityProjection) / (1.0f / mass1 + 1.0f / mass2);
+	Vector2 impulseVector;
+	impulseVector.x = axis.x * impulse;
+	impulseVector.y = axis.y * impulse;
+
+	Vector2 penetration;
+	penetration.x = axis.x * result.penetrationDepth / (1.0f / mass1 + 1.0f / mass2);
+	penetration.y = axis.y * result.penetrationDepth / (1.0f / mass1 + 1.0f / mass2);
+
+	if (!object1->isStaticBody) {
+		object1->velocity.x += impulseVector.x / mass1;
+		object1->velocity.y += impulseVector.y / mass1;
+		object1->position.x += penetration.x;
+		object1->position.y += penetration.y;
+	}
+	if (!object2->isStaticBody) {
+		object2->velocity.x -= impulseVector.x / mass2;
+		object2->velocity.y -= impulseVector.y / mass2;
+		object2->position.x += penetration.x;
+		object2->position.y += penetration.y;
+	}
+
+	if (!object1->isStaticBody && !object2->isStaticBody) {
+		float crossProduct = (1.0f / object1->inertia) * (object1->position.x * impulseVector.y - object1->position.y * impulseVector.x);
+		object1->angularVelocity -= crossProduct;
+
+		crossProduct = (1.0f / object2->inertia) * (object2->position.x * impulseVector.y - object2->position.y * impulseVector.x);
+		object2->angularVelocity -= crossProduct;
+	}
 }
 
 
@@ -52,10 +98,6 @@ void applyPolygonTransform(physicsObject *object) {
 	}
 }
 
-// void calculatePolyNormals(polygonCollisionShape *poly) {
-
-// }
-
 void createPhysicsRect(Vector2 center, Vector2 dimensions, float rotation, bool isStaticBody, float mass, float gravityStrength) {
 	if (objectCount >= MAX_OBJECTS) {
 		return;
@@ -79,6 +121,7 @@ void createPhysicsRect(Vector2 center, Vector2 dimensions, float rotation, bool 
 	object.gravityStrength = gravityStrength;
 	object.isStaticBody = isStaticBody;
 	object.collisionShape = rectShape;
+	object.inertia = object.mass;
 
 	// apply transforms _before_ adding to the array
 	applyPolygonTransform(&object);
@@ -86,7 +129,8 @@ void createPhysicsRect(Vector2 center, Vector2 dimensions, float rotation, bool 
 }
 
 void initializeShapes() {
-	createPhysicsRect((Vector2){100, 100}, (Vector2){50, 50}, 0.0f, false, 1.0f, 1.0f);
+	createPhysicsRect((Vector2){300, 100}, (Vector2){50, 50}, 0.0f, false, 1.0f, 1.0f);
+	createPhysicsRect((Vector2){0, 10}, (Vector2){50, 50}, 0.0f, false, 1.0f, 1.0f);
 	createPhysicsRect((Vector2){960, 1000}, (Vector2){1920, 50}, 0.0f, true, 1.0f, 1.0f);
 }
 

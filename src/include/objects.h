@@ -14,6 +14,7 @@ typedef struct {
 	float angularVelocity;
 	float rotation; // thank god it's 2d
 	float gravityStrength;
+	float inertia;
 	bool isStaticBody;
 	polygonCollisionShape *collisionShape;
 } physicsObject;

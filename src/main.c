@@ -44,14 +44,14 @@ void handleCollision(physicsObject *object1, physicsObject *object2, collisionRe
 	if (!object1->isStaticBody) {
 		object1->velocity.x += impulseVector.x / mass1;
 		object1->velocity.y += impulseVector.y / mass1;
-		object1->position.x += penetration.x;
-		object1->position.y += penetration.y;
+		object1->position.x += penetration.x * (1.0f / mass1);
+		object1->position.y += penetration.y * (1.0f / mass1);
 	}
 	if (!object2->isStaticBody) {
 		object2->velocity.x -= impulseVector.x / mass2;
 		object2->velocity.y -= impulseVector.y / mass2;
-		object2->position.x += penetration.x;
-		object2->position.y += penetration.y;
+		object2->position.x += penetration.x * (-1.0f / mass2);
+		object2->position.y += penetration.y * (-1.0f / mass2);
 	}
 
 	if (!object1->isStaticBody && !object2->isStaticBody) {
@@ -61,13 +61,15 @@ void handleCollision(physicsObject *object1, physicsObject *object2, collisionRe
 		crossProduct = (1.0f / object2->inertia) * (object2->position.x * impulseVector.y - object2->position.y * impulseVector.x);
 		object2->angularVelocity -= crossProduct;
 	}
+	applyPolygonTransform(object1);
+	applyPolygonTransform(object2);
 }
 
 
 void handleVelocity(physicsObject *object) {
 	if (object->isStaticBody)
 		return;
-	
+
 	object->velocity.y += gravity;
 
 	if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
@@ -78,7 +80,7 @@ void handleVelocity(physicsObject *object) {
 			object->angularVelocity = 0;
 		}
 	}
-	
+
 	for (int i = 0; i < objectCount; i++) {
 		physicsObject *object2 = &objectArray[i];
 		if (object != object2) {

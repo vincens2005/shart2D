@@ -12,6 +12,18 @@ physicsObject objectArray[MAX_OBJECTS];
 int objectCount = 0;
 
 float gravity = 1.0;
+void applyPolygonTransform(physicsObject *object) {
+	polygonCollisionShape *poly = object->collisionShape;
+
+	for (int i = 0; i < poly->numPoints; i++) {
+		// Apply rotation (radians)
+		float rotatedX = poly->pointArray[i].x * cosf(object->rotation) - poly->pointArray[i].y * sinf(object->rotation);
+		float rotatedY = poly->pointArray[i].x * sinf(object->rotation) + poly->pointArray[i].y * cosf(object->rotation);
+
+		// Apply translation
+		poly->globalPointArray[i] = (Vector2){rotatedX + object->position.x, rotatedY + object->position.y};
+	}
+}
 
 void handleCollision(physicsObject *object1, physicsObject *object2, collisionResult result) {
 	Vector2 axis = result.normal;
@@ -80,14 +92,16 @@ void handleVelocity(physicsObject *object) {
 			object->angularVelocity = 0;
 		}
 	}
-
-	for (int i = 0; i < objectCount; i++) {
-		physicsObject *object2 = &objectArray[i];
-		if (object != object2) {
-				collisionResult result = polygonIntersect(object->collisionShape->numPoints, object->collisionShape->globalPointArray, object2->collisionShape->numPoints, object2->collisionShape->globalPointArray);
-				if (result.isCollided) {
-					handleCollision(object, object2, result);
-				}
+	// substeps????????
+	for (int i = 0; i < 9; i++) {
+		for (int j = 0; j < objectCount; j++) {
+			physicsObject *object2 = &objectArray[j];
+			if (object != object2) {
+					collisionResult result = polygonIntersect(object->collisionShape->numPoints, object->collisionShape->globalPointArray, object2->collisionShape->numPoints, object2->collisionShape->globalPointArray);
+					if (result.isCollided) {
+						handleCollision(object, object2, result);
+					}
+			}
 		}
 	}
 	object->position = (Vector2){object->position.x + object->velocity.x, object->position.y + object->velocity.y};
@@ -96,19 +110,6 @@ void handleVelocity(physicsObject *object) {
 
 void drawPhysicsPolygon(polygonCollisionShape *poly, Color color) {
 	DrawTriangleFan(poly->globalPointArray, poly->numPoints, color);
-}
-
-void applyPolygonTransform(physicsObject *object) {
-	polygonCollisionShape *poly = object->collisionShape;
-
-	for (int i = 0; i < poly->numPoints; i++) {
-		// Apply rotation (radians)
-		float rotatedX = poly->pointArray[i].x * cosf(object->rotation) - poly->pointArray[i].y * sinf(object->rotation);
-		float rotatedY = poly->pointArray[i].x * sinf(object->rotation) + poly->pointArray[i].y * cosf(object->rotation);
-
-		// Apply translation
-		poly->globalPointArray[i] = (Vector2){rotatedX + object->position.x, rotatedY + object->position.y};
-	}
 }
 
 void createPhysicsRect(Vector2 center, Vector2 dimensions, float rotation, bool isStaticBody, float mass, float gravityStrength) {

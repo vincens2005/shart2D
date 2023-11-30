@@ -40,14 +40,13 @@ float getOverlap(Vector2 axis, int numPoints1, Vector2* points1, int numPoints2,
   }
 }
 
-
 collisionResult polygonIntersect(int numPoints1, Vector2* points1, int numPoints2, Vector2* points2) {
   collisionResult result;
   result.normal = (Vector2){0,0};
   result.isCollided = false;
   result.penetrationDepth = 0.0f;
 
-  float maxOverlap = -INFINITY;
+  float minOverlap = INFINITY;
   // iterate over every single edge on the first shape and check for a seperating axis
   for (int i = 0; i < numPoints1;  i++) {
     int nextIndex = (i + 1) % numPoints1;
@@ -56,11 +55,10 @@ collisionResult polygonIntersect(int numPoints1, Vector2* points1, int numPoints
     float overlap = getOverlap(axis, numPoints1, points1, numPoints2, points2);
     if (overlap == 0.0f) {
       return result;
-    } else if (overlap > maxOverlap){
+    } else if (overlap < minOverlap){
         result.normal = axis;
         result.penetrationDepth = overlap;
-        result.isCollided = true;
-        maxOverlap = overlap;
+        minOverlap = overlap;
     }
   }
   // iterate over the second shape
@@ -71,14 +69,14 @@ collisionResult polygonIntersect(int numPoints1, Vector2* points1, int numPoints
     float overlap = getOverlap(axis, numPoints1, points1, numPoints2, points2);
     if (overlap == 0.0f) {
       return result;
-    } else if (overlap > maxOverlap){
+    } else if (overlap < minOverlap){
         result.normal = axis;
         result.penetrationDepth = overlap;
-        result.isCollided = true;
-        maxOverlap = overlap;
+        minOverlap = overlap;
     }
   }
 
+  result.isCollided = true;
   // if there are no seperating axes, the shapes have indeed collided
   return result;
 }

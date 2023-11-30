@@ -14,7 +14,9 @@ float gravity = 1.0;
 
 void handleCollision(physicsObject *object1, physicsObject *object2, collisionResult result) {
 	  // Check if either object is static
-    if (object1->isStaticBody && object2->isStaticBody) {
+
+
+    if (object1->isStaticBody) {
         // Both objects are static, no need to resolve collision
         return;
     }
@@ -83,6 +85,7 @@ void handleVelocity(physicsObject *object) {
 				collisionResult result = polygonIntersect(object->collisionShape->numPoints, object->collisionShape->globalPointArray,object2->collisionShape->numPoints, object2->collisionShape->globalPointArray);
 				if (result.isCollided) {
 					printf("askldjflasj KILL ME \n");
+					printf("resulting max normal (%f, %f) \n", result.normal.x, result.normal.y);
 					handleCollision(object, object2, result);
 				}
 		}

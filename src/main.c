@@ -8,6 +8,10 @@
 
 
 #define MAX_OBJECTS 10
+// amount of physics iterations per frame
+#define SUBSTEP_AMOUNT 8
+// factor to multiply position changes by
+#define SUBSTEP_FACTOR 0.125f
 
 physicsObject objectArray[MAX_OBJECTS];
 int objectCount = 0;
@@ -55,33 +59,32 @@ void handleCollision(physicsObject *object1, physicsObject *object2, collisionRe
 		object2->velocity = vec2Sub(object2->velocity, vec2Scale(impulseVector, 1.0f / mass2));
 		object2->position = vec2Sub(object2->position, vec2Scale(penetration, 1.0f / mass2));
 	}
-	applyPolygonTransform(object1);
-	applyPolygonTransform(object2);
 }
 
 
 void handleVelocity(physicsObject *object) {
 	if (!(object->isStaticBody)) {
-		object->velocity.y += gravity;
-		object->rotation += object->angularVelocity * 0.001;
-		object->angularVelocity *= 0.1;
+		object->velocity.y += (gravity * SUBSTEP_FACTOR);
+		// object->rotation += object->angularVelocity * 0.001;
+		// object->angularVelocity *= 0.1;
 	}
+
 	if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
 		if (CheckCollisionPointPoly(GetMousePosition(), object->collisionShape->globalPointArray, object->collisionShape->numPoints)) {
 			Vector2 delta = GetMouseDelta();
 			object->velocity = delta;
 		}
 	}
-	// substeps????????
-	object->position = vec2Add(object->position, object->velocity);
-	for (int i = 0; i < 2; i++) {
-		for (int j = 0; j < objectCount; j++) {
-			physicsObject *object2 = &objectArray[j];
-			if (object != object2) {
-					collisionResult result = polygonIntersect(object->collisionShape->numPoints, object->collisionShape->globalPointArray, object2->collisionShape->numPoints, object2->collisionShape->globalPointArray);
-					if (result.isCollided) {
-						handleCollision(object, object2, result);
-					}
+	// apply the position and multiply the velocity by the factor to keep it scaled properly
+	object->position = vec2Add(object->position, vec2Scale(object->velocity, SUBSTEP_FACTOR));
+
+	// iterate through every object and handle collisions
+	for (int j = 0; j < objectCount; j++) {
+		physicsObject *object2 = &objectArray[j];
+		if (object != object2) {
+			collisionResult result = polygonIntersect(object->collisionShape->numPoints, object->collisionShape->globalPointArray, object2->collisionShape->numPoints, object2->collisionShape->globalPointArray);
+			if (result.isCollided) {
+				handleCollision(object, object2, result);
 			}
 		}
 	}
@@ -133,17 +136,28 @@ void initializeShapes() {
 	createPhysicsRect((Vector2){0, 500}, (Vector2){1920, 50}, 0.0f, true, 1.0f, 1.0f);
 }
 
-void physicsTick(){
+void physicsTick() {
+	for (int j = 0; j < objectCount; j++) {
+		physicsObject *object = &objectArray[j];
+		handleVelocity(object);
+		applyPolygonTransform(object);
+	}
+}
+
+void drawShapes() {
 	// random colors to choose from
 	Color colors[12] = {BLUE,RED,ORANGE,PURPLE,GREEN,LIME,VIOLET,DARKBLUE,SKYBLUE,MAROON,BROWN,BEIGE};
-	// TODO: handle substeps
-	for (int i = 0; i < objectCount; i++){
+	for (int i = 0; i < objectCount; i++) {
 		physicsObject *object = &objectArray[i];
-		handleVelocity(object);
-		// handle drawing
-		applyPolygonTransform(object);
 		drawPhysicsPolygon(object->collisionShape, colors[i % 12] /*inputting colors*/);
 	}
+}
+
+void tick(){
+	for (int i = 0; i < SUBSTEP_AMOUNT; i++) {
+		physicsTick();
+	}
+	drawShapes();
 }
 
 void cleanupShapes() {
@@ -164,7 +178,7 @@ int main() {
 		BeginDrawing();
 		ClearBackground(BLACK);
 		// drawing shapes or something idfk
-		physicsTick();
+		tick();
 		// offset = (Vector2){GetScreenWidth()/2.0f,GetScreenHeight()/2.0f};
 		DrawFPS(10, 10); // show current fps on screen
 

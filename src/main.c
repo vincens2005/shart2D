@@ -28,9 +28,10 @@ void applyPolygonTransform(physicsObject *object) {
 void handleCollision(physicsObject *object1, physicsObject *object2, collisionResult result) {
 	Vector2 axis = result.normal;
 
-	if (object1->position.x * axis.x + object1->position.y * axis.y <
-		object2->position.x * axis.x + object2->position.y * axis.y)
+	if (object1->position.x * axis.x + object1->position.y * axis.y < object2->position.x * axis.x + object2->position.y * axis.y) {
 		axis.x = -axis.x;
+		axis.y = -axis.y;
+	}
 
 	Vector2 velocity1 = object1->velocity;
 	Vector2 velocity2 = object2->velocity;
@@ -53,6 +54,7 @@ void handleCollision(physicsObject *object1, physicsObject *object2, collisionRe
 	penetration.x = axis.x * result.penetrationDepth / (1.0f / mass1 + 1.0f / mass2);
 	penetration.y = axis.y * result.penetrationDepth / (1.0f / mass1 + 1.0f / mass2);
 
+
 	if (!object1->isStaticBody) {
 		object1->velocity.x += impulseVector.x / mass1;
 		object1->velocity.y += impulseVector.y / mass1;
@@ -66,12 +68,11 @@ void handleCollision(physicsObject *object1, physicsObject *object2, collisionRe
 		object2->position.y += penetration.y * (-1.0f / mass2);
 	}
 
-	if (!object1->isStaticBody && !object2->isStaticBody) {
+	if (!(object1 ->isStaticBody) && !(object2->isStaticBody)) {
 		float crossProduct = (1.0f / object1->inertia) * (object1->position.x * impulseVector.y - object1->position.y * impulseVector.x);
-		object1->angularVelocity -= crossProduct;
-
+		object1->angularVelocity += crossProduct * DEG2RAD;
 		crossProduct = (1.0f / object2->inertia) * (object2->position.x * impulseVector.y - object2->position.y * impulseVector.x);
-		object2->angularVelocity -= crossProduct;
+		object2->angularVelocity -= crossProduct * DEG2RAD;
 	}
 	applyPolygonTransform(object1);
 	applyPolygonTransform(object2);
@@ -79,11 +80,12 @@ void handleCollision(physicsObject *object1, physicsObject *object2, collisionRe
 
 
 void handleVelocity(physicsObject *object) {
-	if (object->isStaticBody)
-		return;
-
-	object->velocity.y += gravity;
-
+	if (!(object->isStaticBody)) {
+		object->velocity.y += gravity;
+		object->rotation += object->angularVelocity * 0.01;
+		object->angularVelocity *= 0.1;
+		object->velocity.x *= 0.9;
+	}
 	if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
 		if (CheckCollisionPointPoly(GetMousePosition(), object->collisionShape->globalPointArray, object->collisionShape->numPoints)) {
 			Vector2 delta = GetMouseDelta();
@@ -105,7 +107,6 @@ void handleVelocity(physicsObject *object) {
 		}
 	}
 	object->position = (Vector2){object->position.x + object->velocity.x, object->position.y + object->velocity.y};
-	object->rotation += object->angularVelocity;
 }
 
 void drawPhysicsPolygon(polygonCollisionShape *poly, Color color) {
@@ -146,6 +147,8 @@ void createPhysicsRect(Vector2 center, Vector2 dimensions, float rotation, bool 
 void initializeShapes() {
 	createPhysicsRect((Vector2){300, 100}, (Vector2){50, 50}, 0.0f, false, 1.0f, 1.0f);
 	createPhysicsRect((Vector2){0, 10}, (Vector2){50, 50}, 0.0f, false, 1.0f, 1.0f);
+	createPhysicsRect((Vector2){150, 10}, (Vector2){50, 50}, 0.0f, false, 1.0f, 1.0f);
+	createPhysicsRect((Vector2){400, 10}, (Vector2){200, 200}, 0.0f, false, 5.0f, 1.0f);
 	createPhysicsRect((Vector2){0, 500}, (Vector2){1920, 50}, 0.0f, true, 1.0f, 1.0f);
 }
 

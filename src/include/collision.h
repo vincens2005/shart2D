@@ -1,23 +1,9 @@
-float vec2Dot(Vector2 v1, Vector2 v2) {
-  return (v1.x * v2.x) + (v1.y * v2.y);
-}
-
-
-float vec2Length(Vector2 v) {
-  return sqrt((v.x * v.x) + (v.y * v.y));
-}
-
-Vector2 vec2Normalize(Vector2 v) {
-  float length = vec2Length(v);
-  return (Vector2){v.x / length, v.y / length};
-}
-
 float getOverlap(Vector2 axis, int numPoints1, Vector2* points1, int numPoints2, Vector2* points2) {
   float min1 = INFINITY;
   float max1 = -INFINITY;
   // Find the extreme points on each axis for the first polygon
   for (int i = 0; i < numPoints1; i++) {
-    float dotProduct = points1[i].x * axis.x + points1[i].y * axis.y;
+    float dotProduct = vec2Dot(points1[i], axis);
     if (dotProduct < min1) min1 = dotProduct;
     if (dotProduct > max1) max1 = dotProduct;
   }
@@ -26,7 +12,8 @@ float getOverlap(Vector2 axis, int numPoints1, Vector2* points1, int numPoints2,
   float max2 = -INFINITY;
   // Do the same thing again for the second polygon
   for (int i = 0; i < numPoints2; i++) {
-    float dotProduct = points2[i].x * axis.x + points2[i].y * axis.y;
+
+    float dotProduct = vec2Dot(points2[i], axis);
     if (dotProduct < min2) min2 = dotProduct;
     if (dotProduct > max2) max2 = dotProduct;
   }
@@ -55,7 +42,7 @@ collisionResult polygonIntersect(int numPoints1, Vector2* points1, int numPoints
   for (int i = 0; i < numPoints1;  i++) {
     int nextIndex = (i + 1) % numPoints1;
     Vector2 edge = (Vector2){points1[i].x - points1[nextIndex].x, points1[i].y - points1[nextIndex].y};
-    Vector2 axis = vec2Normalize((Vector2){-edge.y, edge.x});
+    Vector2 axis = vec2Normalize(vec2Perp(edge));
     float overlap = getOverlap(axis, numPoints1, points1, numPoints2, points2);
     if (overlap == 0.0f) {
       return result;
@@ -69,7 +56,7 @@ collisionResult polygonIntersect(int numPoints1, Vector2* points1, int numPoints
   for (int i = 0; i < numPoints2;  i++) {
     int nextIndex = (i + 1) % numPoints2;
     Vector2 edge = (Vector2){points2[i].x - points2[nextIndex].x, points2[i].y - points2[nextIndex].y};
-    Vector2 axis = vec2Normalize((Vector2){-edge.y, edge.x});
+    Vector2 axis = vec2Normalize(vec2Perp(edge));
     float overlap = getOverlap(axis, numPoints1, points1, numPoints2, points2);
     if (overlap == 0.0f) {
       return result;

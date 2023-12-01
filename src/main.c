@@ -3,6 +3,7 @@
 #include "math.h"
 #include "include/raylib.h"
 #include "include/objects.h"
+#include "include/vectormath.h"
 #include "include/collision.h"
 
 
@@ -21,16 +22,15 @@ void applyPolygonTransform(physicsObject *object) {
 		float rotatedY = poly->pointArray[i].x * sinf(object->rotation) + poly->pointArray[i].y * cosf(object->rotation);
 
 		// Apply translation
-		poly->globalPointArray[i] = (Vector2){rotatedX + object->position.x, rotatedY + object->position.y};
+		poly->globalPointArray[i] = vec2Add(object->position, (Vector2){rotatedX, rotatedY});
 	}
 }
 
 void handleCollision(physicsObject *object1, physicsObject *object2, collisionResult result) {
 	Vector2 axis = result.normal;
 
-	if (object1->position.x * axis.x + object1->position.y * axis.y < object2->position.x * axis.x + object2->position.y * axis.y) {
-		axis.x = -axis.x;
-		axis.y = -axis.y;
+	if (vec2Dot(object1->position, axis) < vec2Dot(object2->position, axis)) {
+		axis = vec2Negate(axis);
 	}
 
 	Vector2 velocity1 = object1->velocity;
@@ -38,41 +38,23 @@ void handleCollision(physicsObject *object1, physicsObject *object2, collisionRe
 	float mass1 = object1->mass;
 	float mass2 = object2->mass;
 
-	Vector2 velocity;
-	velocity.x = velocity1.x - velocity2.x;
-	velocity.y = velocity1.y - velocity2.y;
+	Vector2 velocity = vec2Sub(velocity1, velocity2);
 
-	float velocityProjection = velocity.x * axis.x + velocity.y * axis.y;
+	float velocityProjection = vec2Dot(velocity, axis);
 
 	float elasticity = 0.5f; // Adjust this value as needed
 	float impulse = (-(1.0f + elasticity) * velocityProjection) / (1.0f / mass1 + 1.0f / mass2);
-	Vector2 impulseVector;
-	impulseVector.x = axis.x * impulse;
-	impulseVector.y = axis.y * impulse;
+	Vector2 impulseVector = vec2Scale(axis, impulse);
 
-	Vector2 penetration;
-	penetration.x = axis.x * result.penetrationDepth / (1.0f / mass1 + 1.0f / mass2);
-	penetration.y = axis.y * result.penetrationDepth / (1.0f / mass1 + 1.0f / mass2);
-
+	Vector2 penetration = vec2Scale(axis, result.penetrationDepth / (1.0f / mass1 + 1.0f / mass2));
 
 	if (!object1->isStaticBody) {
-		object1->velocity.x += impulseVector.x / mass1;
-		object1->velocity.y += impulseVector.y / mass1;
-		object1->position.x += penetration.x * (1.0f / mass1);
-		object1->position.y += penetration.y * (1.0f / mass1);
+		object1->velocity = vec2Add(object1->velocity, vec2Scale(impulseVector, 1.0f / mass1));
+		object1->position = vec2Add(object1->position, vec2Scale(penetration, 1.0f / mass1));
 	}
 	if (!object2->isStaticBody) {
-		object2->velocity.x -= impulseVector.x / mass2;
-		object2->velocity.y -= impulseVector.y / mass2;
-		object2->position.x += penetration.x * (-1.0f / mass2);
-		object2->position.y += penetration.y * (-1.0f / mass2);
-	}
-
-	if (!(object1 ->isStaticBody) && !(object2->isStaticBody)) {
-		float crossProduct = (1.0f / object1->inertia) * (object1->position.x * impulseVector.y - object1->position.y * impulseVector.x);
-		object1->angularVelocity += crossProduct * DEG2RAD;
-		crossProduct = (1.0f / object2->inertia) * (object2->position.x * impulseVector.y - object2->position.y * impulseVector.x);
-		object2->angularVelocity -= crossProduct * DEG2RAD;
+		object2->velocity = vec2Sub(object2->velocity, vec2Scale(impulseVector, 1.0f / mass2));
+		object2->position = vec2Add(object2->position, vec2Scale(penetration, -1.0f / mass2));
 	}
 	applyPolygonTransform(object1);
 	applyPolygonTransform(object2);
@@ -82,15 +64,14 @@ void handleCollision(physicsObject *object1, physicsObject *object2, collisionRe
 void handleVelocity(physicsObject *object) {
 	if (!(object->isStaticBody)) {
 		object->velocity.y += gravity;
-		object->rotation += object->angularVelocity * 0.01;
+		object->rotation += object->angularVelocity * 0.001;
 		object->angularVelocity *= 0.1;
 		object->velocity.x *= 0.9;
 	}
 	if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
 		if (CheckCollisionPointPoly(GetMousePosition(), object->collisionShape->globalPointArray, object->collisionShape->numPoints)) {
 			Vector2 delta = GetMouseDelta();
-			object->velocity.y = delta.y;
-			object->velocity.x = delta.x;
+			object->velocity = delta;
 			object->angularVelocity = 0;
 		}
 	}
@@ -106,7 +87,7 @@ void handleVelocity(physicsObject *object) {
 			}
 		}
 	}
-	object->position = (Vector2){object->position.x + object->velocity.x, object->position.y + object->velocity.y};
+	object->position = vec2Add(object->position, object->velocity);
 }
 
 void drawPhysicsPolygon(polygonCollisionShape *poly, Color color) {
@@ -139,6 +120,9 @@ void createPhysicsRect(Vector2 center, Vector2 dimensions, float rotation, bool 
 	object.inertia = object.mass;
 	object.angularVelocity = 0;
 
+	if (object.isStaticBody) {
+		object.inertia = 0.0f;
+	}
 	// apply transforms _before_ adding to the array
 	applyPolygonTransform(&object);
 	objectArray[objectCount++] = object;

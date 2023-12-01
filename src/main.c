@@ -39,7 +39,6 @@ void handleCollision(physicsObject *object1, physicsObject *object2, collisionRe
 	float mass2 = object2->mass;
 
 	Vector2 velocity = vec2Sub(velocity1, velocity2);
-
 	float velocityProjection = vec2Dot(velocity, axis);
 
 	float elasticity = 0.5f; // Adjust this value as needed
@@ -54,7 +53,7 @@ void handleCollision(physicsObject *object1, physicsObject *object2, collisionRe
 	}
 	if (!object2->isStaticBody) {
 		object2->velocity = vec2Sub(object2->velocity, vec2Scale(impulseVector, 1.0f / mass2));
-		object2->position = vec2Add(object2->position, vec2Scale(penetration, -1.0f / mass2));
+		object2->position = vec2Sub(object2->position, vec2Scale(penetration, 1.0f / mass2));
 	}
 	applyPolygonTransform(object1);
 	applyPolygonTransform(object2);
@@ -66,17 +65,16 @@ void handleVelocity(physicsObject *object) {
 		object->velocity.y += gravity;
 		object->rotation += object->angularVelocity * 0.001;
 		object->angularVelocity *= 0.1;
-		object->velocity.x *= 0.9;
 	}
 	if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
 		if (CheckCollisionPointPoly(GetMousePosition(), object->collisionShape->globalPointArray, object->collisionShape->numPoints)) {
 			Vector2 delta = GetMouseDelta();
 			object->velocity = delta;
-			object->angularVelocity = 0;
 		}
 	}
 	// substeps????????
-	for (int i = 0; i < 9; i++) {
+	object->position = vec2Add(object->position, object->velocity);
+	for (int i = 0; i < 2; i++) {
 		for (int j = 0; j < objectCount; j++) {
 			physicsObject *object2 = &objectArray[j];
 			if (object != object2) {
@@ -87,7 +85,6 @@ void handleVelocity(physicsObject *object) {
 			}
 		}
 	}
-	object->position = vec2Add(object->position, object->velocity);
 }
 
 void drawPhysicsPolygon(polygonCollisionShape *poly, Color color) {
@@ -139,7 +136,7 @@ void initializeShapes() {
 void physicsTick(){
 	// random colors to choose from
 	Color colors[12] = {BLUE,RED,ORANGE,PURPLE,GREEN,LIME,VIOLET,DARKBLUE,SKYBLUE,MAROON,BROWN,BEIGE};
-
+	// TODO: handle substeps
 	for (int i = 0; i < objectCount; i++){
 		physicsObject *object = &objectArray[i];
 		handleVelocity(object);

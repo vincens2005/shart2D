@@ -15,8 +15,10 @@
 
 physicsObject objectArray[MAX_OBJECTS];
 int objectCount = 0;
+float gravity = 1.0f;
 
-float gravity = 1.0;
+// TODO: unclutter main.c :D
+
 void applyPolygonTransform(physicsObject *object) {
 	polygonCollisionShape *poly = object->collisionShape;
 
@@ -31,6 +33,7 @@ void applyPolygonTransform(physicsObject *object) {
 }
 
 void handleCollision(physicsObject *object1, physicsObject *object2, collisionResult result) {
+	// TODO: move this into the polygonIntersect function in collision.h
 	Vector2 axis = result.normal;
 
 	if (vec2Dot(object1->position, axis) < vec2Dot(object2->position, axis)) {
@@ -51,6 +54,8 @@ void handleCollision(physicsObject *object1, physicsObject *object2, collisionRe
 
 	Vector2 penetration = vec2Scale(axis, result.penetrationDepth / (1.0f / mass1 + 1.0f / mass2));
 
+	// TODO: add friction and angularVelocity calculations
+
 	if (!object1->isStaticBody) {
 		object1->velocity = vec2Add(object1->velocity, vec2Scale(impulseVector, 1.0f / mass1));
 		object1->position = vec2Add(object1->position, vec2Scale(penetration, 1.0f / mass1));
@@ -65,8 +70,7 @@ void handleCollision(physicsObject *object1, physicsObject *object2, collisionRe
 void handleVelocity(physicsObject *object) {
 	if (!(object->isStaticBody)) {
 		object->velocity.y += (gravity * SUBSTEP_FACTOR);
-		// object->rotation += object->angularVelocity * 0.001;
-		// object->angularVelocity *= 0.1;
+		object->rotation += (object->angularVelocity * SUBSTEP_FACTOR);
 	}
 
 	if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {

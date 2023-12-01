@@ -65,8 +65,8 @@ collisionResult polygonIntersect(int numPoints1, Vector2* points1, int numPoints
         result.penetrationDepth = overlap;
         minOverlap = overlap;
     }
-  }
 
+  }
   result.isCollided = true;
   // if there are no seperating axes, the shapes have indeed collided
   return result;

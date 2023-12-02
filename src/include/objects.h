@@ -56,5 +56,5 @@ float get_inertia(physicsObject *object) {
 		inertia += term1 + term2;
 	};
 
-		return fabsf(inertia) / 100.0f;
+		return fabsf(inertia) / 12.0f;
 	};

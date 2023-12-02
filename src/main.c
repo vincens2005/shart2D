@@ -91,10 +91,9 @@ void handleCollision(physicsObject *object1) {
 	for (int i = 0; i < objectCount; i++) {
 		physicsObject *object2 = &objectArray[i];
 		if (object1 != object2) {
-			// if (!(AABBIntersect(object1->collisionShape, object2->collisionShape))) {
-			// 	printf("fuck that shi");
-			// 	return;
-			// }
+			if (!(AABBIntersect(object1->collisionShape, object2->collisionShape))) {
+				continue;
+			}
 
 			collisionResult result = polygonIntersect(object1, object2);
 			if (result.isCollided) {

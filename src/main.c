@@ -202,11 +202,6 @@ void resolveVelocity(physicsObject *object1, physicsObject *object2, collisionRe
 }
 
 void handleCollision(physicsObject *object1, physicsObject *object2, collisionResult result) {
-	// correct the collision normal
-	if (vec2Dot(object1->position, result.normal) < vec2Dot(object2->position, result.normal)) {
-		result.normal = vec2Negate(result.normal);
-	}
-
 	Vector2 penetration = vec2Scale(result.normal, result.penetrationDepth);
 	separateBodies(object1, object2, penetration);
 	resolveCollisionWithRotation(object1, object2, result);
@@ -232,17 +227,8 @@ void handleVelocity(physicsObject *object) {
 	for (int i = 0; i < objectCount; i++) {
 		physicsObject *object2 = &objectArray[i];
 		if (object != object2) {
-			collisionResult result = polygonIntersect(object->collisionShape->numPoints, object->collisionShape->globalPointArray, object2->collisionShape->numPoints, object2->collisionShape->globalPointArray);
+			collisionResult result = polygonIntersect(object, object2);
 			if (result.isCollided) {
-				polygonsContactPoints(
-					object->collisionShape->globalPointArray,
-					object->collisionShape->numPoints,
-					object2->collisionShape->globalPointArray,
-					object2->collisionShape->numPoints,
-					&result.contact1,
-					&result.contact2,
-					&result.numContacts
-				);
 				DrawCircle(result.contact1.x,result.contact1.y, 10, BLUE);
 				if (result.numContacts > 1) {
 					DrawCircle(result.contact2.x,result.contact2.y, 10, RED);

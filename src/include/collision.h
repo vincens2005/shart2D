@@ -31,48 +31,6 @@ float getOverlap(Vector2 axis, int numPoints1, Vector2* points1, int numPoints2,
   }
 }
 
-collisionResult polygonIntersect(int numPoints1, Vector2* points1, int numPoints2, Vector2* points2) {
-  collisionResult result;
-  result.normal = (Vector2){0,0};
-  // result.point = (Vector2){0,0};
-  result.isCollided = false;
-  result.penetrationDepth = 0.0f;
-
-  float minOverlap = INFINITY;
-  // iterate over every single edge on the first shape and check for a seperating axis
-  for (int i = 0; i < numPoints1;  i++) {
-    int nextIndex = (i + 1) % numPoints1;
-    Vector2 edge = (Vector2){points1[i].x - points1[nextIndex].x, points1[i].y - points1[nextIndex].y};
-    Vector2 axis = vec2Normalize(vec2Perp(edge));
-    float overlap = getOverlap(axis, numPoints1, points1, numPoints2, points2);
-    if (overlap == 0.0f) {
-      return result;
-    } else if (overlap < minOverlap){
-        result.normal = axis;
-        result.penetrationDepth = overlap;
-        minOverlap = overlap;
-    }
-  }
-  // iterate over the second shape
-  for (int i = 0; i < numPoints2;  i++) {
-    int nextIndex = (i + 1) % numPoints2;
-    Vector2 edge = (Vector2){points2[i].x - points2[nextIndex].x, points2[i].y - points2[nextIndex].y};
-    Vector2 axis = vec2Normalize(vec2Perp(edge));
-    float overlap = getOverlap(axis, numPoints1, points1, numPoints2, points2);
-    if (overlap == 0.0f) {
-      return result;
-    } else if (overlap < minOverlap){
-        result.normal = axis;
-        result.penetrationDepth = overlap;
-        minOverlap = overlap;
-    }
-
-  }
-  result.isCollided = true;
-  // if there are no seperating axes, the shapes have indeed collided
-  return result;
-}
-
 void pointSegmentDistance(Vector2 p, Vector2 point1, Vector2 point2, float *distSq, Vector2 *cp) {
     float l2 = vec2DistSquared(point1, point2);
     if (l2 == 0.0f) {
@@ -144,5 +102,65 @@ void polygonsContactPoints(
             }
         }
     }
+}
+
+collisionResult polygonIntersect(physicsObject *object1, physicsObject *object2) {
+
+  int numPoints1 = object1->collisionShape->numPoints;
+  int numPoints2 = object2->collisionShape->numPoints;
+  Vector2 *points1 = object1->collisionShape->globalPointArray;
+  Vector2 *points2 = object2->collisionShape->globalPointArray;
+
+  collisionResult result;
+  result.normal = (Vector2){0,0};
+  // result.point = (Vector2){0,0};
+  result.isCollided = false;
+  result.penetrationDepth = 0.0f;
+
+  float minOverlap = INFINITY;
+  // iterate over every single edge on the first shape and check for a seperating axis
+  for (int i = 0; i < numPoints1;  i++) {
+    int nextIndex = (i + 1) % numPoints1;
+    Vector2 edge = (Vector2){points1[i].x - points1[nextIndex].x, points1[i].y - points1[nextIndex].y};
+    Vector2 axis = vec2Normalize(vec2Perp(edge));
+    float overlap = getOverlap(axis, numPoints1, points1, numPoints2, points2);
+    if (overlap == 0.0f) {
+      return result;
+    } else if (overlap < minOverlap){
+        result.normal = axis;
+        result.penetrationDepth = overlap;
+        minOverlap = overlap;
+    }
+  }
+  // iterate over the second shape
+  for (int i = 0; i < numPoints2;  i++) {
+    int nextIndex = (i + 1) % numPoints2;
+    Vector2 edge = (Vector2){points2[i].x - points2[nextIndex].x, points2[i].y - points2[nextIndex].y};
+    Vector2 axis = vec2Normalize(vec2Perp(edge));
+    float overlap = getOverlap(axis, numPoints1, points1, numPoints2, points2);
+    if (overlap == 0.0f) {
+      return result;
+    } else if (overlap < minOverlap){
+        result.normal = axis;
+        result.penetrationDepth = overlap;
+        minOverlap = overlap;
+    }
+
+  }
+  result.isCollided = true;
+  polygonsContactPoints(
+		object1->collisionShape->globalPointArray,
+		object1->collisionShape->numPoints,
+		object2->collisionShape->globalPointArray,
+		object2->collisionShape->numPoints,
+		&result.contact1,
+		&result.contact2,
+		&result.numContacts
+	);
+  if (vec2Dot(object1->position, result.normal) < vec2Dot(object2->position, result.normal)) {
+		result.normal = vec2Negate(result.normal);
+	}
+  // if there are no seperating axes, the shapes have indeed collided
+  return result;
 }
 

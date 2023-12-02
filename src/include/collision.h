@@ -34,6 +34,7 @@ float getOverlap(Vector2 axis, int numPoints1, Vector2* points1, int numPoints2,
 collisionResult polygonIntersect(int numPoints1, Vector2* points1, int numPoints2, Vector2* points2) {
   collisionResult result;
   result.normal = (Vector2){0,0};
+  // result.point = (Vector2){0,0};
   result.isCollided = false;
   result.penetrationDepth = 0.0f;
 
@@ -70,5 +71,78 @@ collisionResult polygonIntersect(int numPoints1, Vector2* points1, int numPoints
   result.isCollided = true;
   // if there are no seperating axes, the shapes have indeed collided
   return result;
+}
+
+void pointSegmentDistance(Vector2 p, Vector2 point1, Vector2 point2, float *distSq, Vector2 *cp) {
+    float l2 = vec2DistSquared(point1, point2);
+    if (l2 == 0.0f) {
+        *distSq = vec2DistSquared(p, point1);
+        *cp = point1;
+    } else {
+        float t = fmaxf(0.0f, fminf(1.0f, ((p.x - point1.x) * (point2.x - point1.x) + (p.y - point1.y) * (point2.y - point1.y)) / l2));
+        Vector2 projection = {point1.x + t * (point2.x - point1.x), point1.y + t * (point2.y - point1.y)};
+        *distSq = vec2DistSquared(p, projection);
+        *cp = projection;
+    }
+}
+
+void polygonsContactPoints(
+    Vector2 *points1, int numPoints1,
+    Vector2 *points2, int numPoints2,
+    Vector2 *contact1, Vector2 *contact2, int *contactCount) {
+
+    *contact1 = (Vector2){0,0};
+    *contact2 = (Vector2){0,0};
+    *contactCount = 0;
+
+    float minDistSq = INFINITY;
+
+    for (int i = 0; i < numPoints1; i++) {
+        Vector2 p = points1[i];
+
+        for (int j = 0; j < numPoints2; j++) {
+            Vector2 point1 = points2[j];
+            Vector2 point2 = points2[(j + 1) % numPoints2];
+
+            float distSq;
+            Vector2 cp;
+            pointSegmentDistance(p, point1, point2, &distSq, &cp);
+
+            if (fabsf(distSq - minDistSq) < FLT_EPSILON) {
+                if (!(cp.x == contact1->x && cp.y == contact1->y)) {
+                    *contact2 = cp;
+                    *contactCount = 2;
+                }
+            } else if (distSq < minDistSq) {
+                minDistSq = distSq;
+                *contactCount = 1;
+                *contact1 = cp;
+            }
+        }
+    }
+
+    for (int i = 0; i < numPoints2; i++) {
+        Vector2 p = points2[i];
+
+        for (int j = 0; j < numPoints1; j++) {
+            Vector2 point1 = points1[j];
+            Vector2 point2 = points1[(j + 1) % numPoints1];
+
+            float distSq;
+            Vector2 cp;
+            pointSegmentDistance(p, point1, point2, &distSq, &cp);
+
+            if (fabsf(distSq - minDistSq) < FLT_EPSILON) {
+                if (!(cp.x == contact1->x && cp.y == contact1->y)) {
+                    *contact2 = cp;
+                    *contactCount = 2;
+                }
+            } else if (distSq < minDistSq) {
+                minDistSq = distSq;
+                *contactCount = 1;
+                *contact1 = cp;
+            }
+        }
+    }
 }
 

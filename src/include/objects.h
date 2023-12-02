@@ -9,19 +9,23 @@ typedef struct {
 
 typedef struct {
 	float mass;
+	float inertia;
+	float invMass;
+	float invInertia;
 	Vector2 position;
 	Vector2 velocity;
 	float angularVelocity;
 	float rotation; // thank god it's 2d
 	float gravityStrength;
-	float inertia;
 	bool isStaticBody;
 	polygonCollisionShape *collisionShape;
 } physicsObject;
 
 typedef struct {
   Vector2 normal;
-  Vector2 point;
+  Vector2 contact1;
+  Vector2 contact2;
+  int numContacts;
   float penetrationDepth;
   bool isCollided;
   // physicsObject *object1;

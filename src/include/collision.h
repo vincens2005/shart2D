@@ -44,7 +44,7 @@ void pointSegmentDistance(Vector2 p, Vector2 point1, Vector2 point2, float *dist
     }
 }
 
-void polygonsContactPoints(
+void findPolygonContactPoints(
     Vector2 *points1, int numPoints1,
     Vector2 *points2, int numPoints2,
     Vector2 *contact1, Vector2 *contact2, int *contactCount) {
@@ -113,7 +113,8 @@ collisionResult polygonIntersect(physicsObject *object1, physicsObject *object2)
 
   collisionResult result;
   result.normal = (Vector2){0,0};
-  // result.point = (Vector2){0,0};
+  result.object1 = object1;
+  result.object2 = object2;
   result.isCollided = false;
   result.penetrationDepth = 0.0f;
 
@@ -148,7 +149,7 @@ collisionResult polygonIntersect(physicsObject *object1, physicsObject *object2)
 
   }
   result.isCollided = true;
-  polygonsContactPoints(
+  findPolygonContactPoints(
 		object1->collisionShape->globalPointArray,
 		object1->collisionShape->numPoints,
 		object2->collisionShape->globalPointArray,
@@ -162,5 +163,12 @@ collisionResult polygonIntersect(physicsObject *object1, physicsObject *object2)
 	}
   // if there are no seperating axes, the shapes have indeed collided
   return result;
+}
+
+bool AABBIntersect(polygonCollisionShape *shape1, polygonCollisionShape *shape2) {
+    return shape1->min.x < shape2->max.x &&
+            shape1->max.x > shape2->min.x &&
+            shape1->min.y < shape2->max.y &&
+            shape1->max.y > shape2->min.y;
 }
 

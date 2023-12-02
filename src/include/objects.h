@@ -8,6 +8,8 @@ typedef struct {
 	int numPoints;
 	Vector2 *pointArray;
 	Vector2 *globalPointArray;
+	Vector2 min;
+	Vector2 max;
 } polygonCollisionShape;
 
 typedef struct {
@@ -33,8 +35,8 @@ typedef struct {
 	int numContacts;
 	float penetrationDepth;
 	bool isCollided;
-	// physicsObject *object1;
-	// physicsObject *object2;
+	physicsObject *object1;
+	physicsObject *object2;
 } collisionResult;
 
 

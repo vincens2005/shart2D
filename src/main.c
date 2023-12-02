@@ -23,6 +23,11 @@ float gravity = 0.6f;
 void applyPolygonTransform(physicsObject *object) {
 	polygonCollisionShape *poly = object->collisionShape;
 
+	poly->min.x = INFINITY;
+	poly->min.y = INFINITY;
+	poly->max.x = -INFINITY;
+	poly->max.y = -INFINITY;
+
 	for (int i = 0; i < poly->numPoints; i++) {
 		// Apply rotation (radians)
 		float rotatedX = poly->pointArray[i].x * cosf(object->rotation) - poly->pointArray[i].y * sinf(object->rotation);
@@ -30,7 +35,22 @@ void applyPolygonTransform(physicsObject *object) {
 
 		// Apply translation
 		poly->globalPointArray[i] = vec2Add(object->position, (Vector2){rotatedX, rotatedY});
+		// set AABB
+		if (poly->globalPointArray[i].x < poly->min.x) {
+			poly->min.x = poly->globalPointArray[i].x;
+		}
+		if (poly->globalPointArray[i].y < poly->min.y) {
+			poly->min.y = poly->globalPointArray[i].y;
+		}
+		if (poly->globalPointArray[i].x > poly->max.x) {
+			poly->max.x = poly->globalPointArray[i].x;
+		}
+		if (poly->globalPointArray[i].y > poly->max.y) {
+			poly->max.y = poly->globalPointArray[i].y;
+		}
 	}
+
+	DrawRectangleLines(poly->min.x - 2, poly->min.y - 2, poly->max.x - poly->min.x + 4, poly->max.y - poly->min.y + 4, RED);
 }
 
 void separateBodies(physicsObject *object1, physicsObject *object2, Vector2 penetration) {
@@ -48,9 +68,9 @@ void separateBodies(physicsObject *object1, physicsObject *object2, Vector2 pene
 
 }
 
-void resolveVelocity(physicsObject *object1, physicsObject *object2, collisionResult result) {
+void resolveVelocity(collisionResult result) {
 
-	Vector2 relativeVelocity = vec2Sub(object1->velocity, object2->velocity);
+	Vector2 relativeVelocity = vec2Sub(result.object1->velocity, result.object2->velocity);
 	float velocityProjection = vec2Dot(relativeVelocity, result.normal);
 
 	if (velocityProjection > 0.0f) {
@@ -58,22 +78,36 @@ void resolveVelocity(physicsObject *object1, physicsObject *object2, collisionRe
 	}
 
 	float elasticity = 0.3f; // Adjust this value as needed
-	float impulse = (-(1.0f + elasticity) * velocityProjection) / (object1->invMass + object2->invMass);
+	float impulse = (-(1.0f + elasticity) * velocityProjection) / (result.object1->invMass + result.object2->invMass);
 
 	Vector2 impulseVector = vec2Scale(result.normal, impulse);
 
-	object1->velocity = vec2Add(object1->velocity, vec2Scale(impulseVector, object1->invMass));
-	object2->velocity = vec2Sub(object2->velocity, vec2Scale(impulseVector, object2->invMass));
+	result.object1->velocity = vec2Add(result.object1->velocity, vec2Scale(impulseVector, result.object1->invMass));
+	result.object2->velocity = vec2Sub(result.object2->velocity, vec2Scale(impulseVector, result.object2->invMass));
 
 }
 
-void handleCollision(physicsObject *object1, physicsObject *object2, collisionResult result) {
-	if (object1->isStaticBody && object2->isStaticBody) {
-		return;
+void handleCollision(physicsObject *object1) {
+	for (int i = 0; i < objectCount; i++) {
+		physicsObject *object2 = &objectArray[i];
+		if (object1 != object2) {
+			// if (!(AABBIntersect(object1->collisionShape, object2->collisionShape))) {
+			// 	printf("fuck that shi");
+			// 	return;
+			// }
+
+			collisionResult result = polygonIntersect(object1, object2);
+			if (result.isCollided) {
+				DrawCircle(result.contact1.x,result.contact1.y, 10, BLUE);
+				if (result.numContacts > 1) {
+					DrawCircle(result.contact2.x,result.contact2.y, 10, RED);
+				}
+				Vector2 penetration = vec2Scale(result.normal, result.penetrationDepth);
+				separateBodies(result.object1, result.object2, penetration);
+				resolveVelocity(result);
+			}
+		}
 	}
-	Vector2 penetration = vec2Scale(result.normal, result.penetrationDepth);
-	separateBodies(object1, object2, penetration);
-	resolveVelocity(object1, object2, result);
 }
 
 
@@ -87,24 +121,12 @@ void handleVelocity(physicsObject *object) {
 	// apply the position and multiply the velocity by the factor to keep it scaled properly
 	object->position = vec2Add(object->position, vec2Scale(object->velocity, SUBSTEP_FACTOR));
 	if (object->isStaticBody) {
+		object->velocity = (Vector2){0,0};
 		return;
 	}
 	object->velocity.y += (gravity * SUBSTEP_FACTOR);
 	object->rotation += (object->angularVelocity * SUBSTEP_FACTOR);
-	// iterate through every object and handle collisions
-	for (int i = 0; i < objectCount; i++) {
-		physicsObject *object2 = &objectArray[i];
-		if (object != object2) {
-			collisionResult result = polygonIntersect(object, object2);
-			if (result.isCollided) {
-				DrawCircle(result.contact1.x,result.contact1.y, 10, BLUE);
-				if (result.numContacts > 1) {
-					DrawCircle(result.contact2.x,result.contact2.y, 10, RED);
-				}
-				handleCollision(object, object2, result);
-			}
-		}
-	}
+	handleCollision(object);
 }
 
 void drawPhysicsPolygon(polygonCollisionShape *poly, Color color) {
@@ -155,7 +177,7 @@ void initializeShapes() {
 	createPhysicsRect((Vector2){300, 100}, (Vector2){50, 50}, 0.0f, false, 1.0f, 1.0f);
 	createPhysicsRect((Vector2){0, 10}, (Vector2){50, 50}, 0.0f, false, 1.0f, 1.0f);
 	createPhysicsRect((Vector2){150, 10}, (Vector2){50, 50}, 0.0f, false, 1.0f, 1.0f);
-	createPhysicsRect((Vector2){400, 10}, (Vector2){200, 200}, 0.0f, false, 5.0f, 1.0f);
+	createPhysicsRect((Vector2){400, 10}, (Vector2){200, 200}, 0.4f, false, 1.0f, 1.0f);
 	createPhysicsRect((Vector2){0, 500}, (Vector2){1920, 50}, 0.0f, true, 1.0f, 1.0f);
 }
 

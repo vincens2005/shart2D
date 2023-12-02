@@ -8,6 +8,8 @@ typedef struct {
 } polygonCollisionShape;
 
 typedef struct {
+	float staticFriction;
+	float dynamicFriction;
 	float mass;
 	float inertia;
 	float invMass;

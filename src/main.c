@@ -16,7 +16,7 @@
 
 physicsObject objectArray[MAX_OBJECTS];
 int objectCount = 0;
-float gravity = 1.0f;
+float gravity = 0.6f;
 
 // TODO: unclutter main.c :D
 
@@ -36,14 +36,19 @@ void applyPolygonTransform(physicsObject *object) {
 void separateBodies(physicsObject *object1, physicsObject *object2, Vector2 penetration) {
 	if (object1->isStaticBody) {
 		object2->position = vec2Add(object2->position, vec2Negate(penetration));
+		applyPolygonTransform(object2);
 	}
 	else if (object2->isStaticBody) {
 		object1->position = vec2Add(object1->position, penetration);
+		applyPolygonTransform(object1);
 	}
 	else {
 		object1->position = vec2Add(object1->position, vec2Scale(penetration, 0.5f));
 		object2->position = vec2Add(object2->position, vec2Scale(penetration, -0.5f));
+		applyPolygonTransform(object1);
+		applyPolygonTransform(object2);
 	}
+
 }
 
 void resolveCollisionWithRotation(physicsObject* object1, physicsObject* object2, collisionResult result) {
@@ -52,19 +57,24 @@ void resolveCollisionWithRotation(physicsObject* object1, physicsObject* object2
 
 	float elasticity = 0.2f; // Adjust this value as needed
 
-	Vector2 contactList[2] = {result.contact1, result.contact2};
-	Vector2 impulseList[2] = {(Vector2){0,0}, (Vector2){0,0}};
-	Vector2 raList[2] = {(Vector2){0,0}, (Vector2){0,0}};
-	Vector2 rbList[2] = {(Vector2){0,0}, (Vector2){0,0}};
+	float staticFriction = (object1->staticFriction + object2->staticFriction) * 0.5f;
+	float dynamicFriction = (object1->dynamicFriction + object2->dynamicFriction) * 0.5f;
+
+	Vector2 contactArray[2] = {result.contact1, result.contact2};
+	Vector2 impulseArray[2] = {(Vector2){0,0}, (Vector2){0,0}};
+	Vector2 frictionImpulseArray[2] = {(Vector2){0,0}, (Vector2){0,0}};
+	float jArray[2] = {0.0f,0.0f};
+	Vector2 raArray[2] = {(Vector2){0,0}, (Vector2){0,0}};
+	Vector2 rbArray[2] = {(Vector2){0,0}, (Vector2){0,0}};
 
 	// loop through each contact
 	for (int i = 0; i < numContacts; i++) {
 
-		Vector2 ra = vec2Sub(contactList[i], object1->position);
-		Vector2 rb = vec2Sub(contactList[i], object2->position);
+		Vector2 ra = vec2Sub(contactArray[i], object1->position);
+		Vector2 rb = vec2Sub(contactArray[i], object2->position);
 
-		raList[i] = ra;
-		rbList[i] = rb;
+		raArray[i] = ra;
+		rbArray[i] = rb;
 
 		Vector2 raPerp = vec2Perp(ra);
 		Vector2 rbPerp = vec2Perp(rb);
@@ -92,14 +102,15 @@ void resolveCollisionWithRotation(physicsObject* object1, physicsObject* object2
 		j /= denom;
 		j /= (float)numContacts;
 
+		jArray[i] = j;
 		Vector2 impulse = vec2Scale(normal, j);
-		impulseList[i] = impulse;
+		impulseArray[i] = impulse;
 	}
 
 	for (int i = 0; i < numContacts; i++) {
-		Vector2 impulse = impulseList[i];
-		Vector2 ra = raList[i];
-		Vector2 rb = rbList[i];
+		Vector2 impulse = impulseArray[i];
+		Vector2 ra = raArray[i];
+		Vector2 rb = rbArray[i];
 		if (!(object1->isStaticBody)) {
 			object1->velocity = vec2Add(object1->velocity, vec2Scale(impulse, object1->invMass));
 			object1->angularVelocity += vec2Cross(ra, impulse) * -object1->invInertia;
@@ -107,6 +118,67 @@ void resolveCollisionWithRotation(physicsObject* object1, physicsObject* object2
 		if (!(object2->isStaticBody)) {
 			object2->velocity = vec2Add(object2->velocity, vec2Scale(impulse, -object2->invMass));
 			object2->angularVelocity += vec2Cross(rb, impulse) * object2->invInertia;
+		}
+	}
+	for (int i = 0; i < numContacts; i++) {
+
+		Vector2 ra = vec2Sub(contactArray[i], object1->position);
+		Vector2 rb = vec2Sub(contactArray[i], object2->position);
+
+		raArray[i] = ra;
+		rbArray[i] = rb;
+
+		Vector2 raPerp = vec2Perp(ra);
+		Vector2 rbPerp = vec2Perp(rb);
+
+		Vector2 angularLinearVelocity1 = vec2Scale(raPerp, object1->angularVelocity);
+		Vector2 angularLinearVelocity2 = vec2Scale(rbPerp, object2->angularVelocity);
+
+		Vector2 relativeVelocity = vec2Sub(vec2Add(object2->velocity, angularLinearVelocity2),
+																			vec2Add(object1->velocity, angularLinearVelocity1));
+
+		Vector2 tangent = vec2Sub(relativeVelocity, vec2Scale(normal, vec2Dot(relativeVelocity, normal)));
+
+		// if the vector is nearly zero, stop this iteration
+		if (fmaxf(vec2LengthSquared(tangent) - 0.3f, 0.0f) == 0) {
+			continue;
+		} else {
+			tangent = vec2Normalize(tangent);
+		}
+
+		float raPerpDotTangent = vec2Dot(raPerp, tangent);
+		float rbPerpDotTangent = vec2Dot(rbPerp, tangent);
+
+		float denom = (object1->invMass + object2->invMass) +
+									(raPerpDotTangent * raPerpDotTangent) * object1->invInertia +
+									(rbPerpDotTangent * rbPerpDotTangent) * object2->invInertia;
+
+		float jTangent = -vec2Dot(relativeVelocity, tangent);
+		jTangent /= denom;
+		jTangent /= (float)numContacts;
+
+		Vector2 frictionImpulse;
+
+		if (fabsf(jTangent) <= jArray[i] * staticFriction) {
+			frictionImpulse = vec2Scale(tangent, jTangent);
+		} else {
+			frictionImpulse = vec2Scale(tangent, -jArray[i] * dynamicFriction);
+		}
+
+		frictionImpulseArray[i] = frictionImpulse;
+	}
+
+	for (int i = 0; i < numContacts; i++) {
+		Vector2 frictionImpulse = frictionImpulseArray[i];
+		Vector2 ra = raArray[i];
+		Vector2 rb = rbArray[i];
+		if (!(object1->isStaticBody)) {
+			object1->velocity = vec2Add(object1->velocity, vec2Scale(frictionImpulse, object1->invMass));
+			object1->angularVelocity += vec2Cross(ra, frictionImpulse) * -object1->invInertia;
+		}
+		if (!(object2->isStaticBody)) {
+			object2->velocity = vec2Add(object2->velocity, vec2Scale(frictionImpulse, -object2->invMass));
+			object2->angularVelocity += vec2Cross(rb, frictionImpulse) * object2->invInertia;
 		}
 	}
 }
@@ -144,7 +216,7 @@ void handleCollision(physicsObject *object1, physicsObject *object2, collisionRe
 void handleVelocity(physicsObject *object) {
 	if (!(object->isStaticBody)) {
 		object->velocity.y += (gravity * SUBSTEP_FACTOR);
-		object->rotation += (object->angularVelocity * SUBSTEP_FACTOR);
+		object->rotation += (object->angularVelocity * SUBSTEP_FACTOR) * 0.01;
 	}
 
 	if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
@@ -209,9 +281,11 @@ void createPhysicsRect(Vector2 center, Vector2 dimensions, float rotation, bool 
 	object.gravityStrength = gravityStrength;
 	object.isStaticBody = isStaticBody;
 	object.collisionShape = rectShape;
-	object.inertia = 2.0;
+	object.inertia = 1.0f;
 	object.invInertia = 1.0f / object.inertia;
-	object.angularVelocity = 0;
+	object.angularVelocity = 0.0f;
+	object.staticFriction = 0.6f;
+	object.dynamicFriction = 0.4f;
 
 	if (object.isStaticBody) {
 		object.inertia = 0.0f;

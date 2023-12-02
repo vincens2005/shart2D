@@ -75,22 +75,59 @@ void separateBodies(physicsObject *object1, physicsObject *object2, Vector2 pene
 }
 
 void resolveVelocity(collisionResult result) {
+	physicsObject *object1 = result.object1;
+	physicsObject *object2 = result.object2;
 
-	Vector2 relativeVelocity = vec2Sub(result.object1->velocity, result.object2->velocity);
-	float velocityProjection = vec2Dot(relativeVelocity, result.normal);
+	// cache velocities before collision
+	Vector2 velocity1 = object1->velocity;
+	Vector2 velocity2 = object2->velocity;
+	float angularVelocity1 = object1->angularVelocity;
+	float angularVelocity2 = object2->angularVelocity;
 
-	if (velocityProjection > 0.0f) {
-		return;
+	Vector2 normal = result.normal;
+
+	float elasticity = 0.5f; // TODO: put this inside of the physicsObject
+
+	int numContacts  = result.numContacts;
+	Vector2 contactArray[2] = {result.contact1, result.contact2};
+
+	for (int i = 0; i < numContacts; i++) {
+			Vector2 r1 = vec2Sub(contactArray[i], object1->position);
+			Vector2 r2 = vec2Sub(contactArray[i], object2->position);
+
+			Vector2 r1Perp = vec2Perp(r1);
+			Vector2 r2Perp = vec2Perp(r2);
+
+			Vector2 angularLinearVelocity1 = vec2Scale(r1Perp, angularVelocity1);
+			Vector2 angularLinearVelocity2 = vec2Scale(r2Perp, angularVelocity2);
+
+			Vector2 relativeVelocity = vec2Sub(
+					vec2Add(velocity1, angularLinearVelocity1),
+					vec2Add(velocity2, angularLinearVelocity2)
+			);
+
+			float velocityProjection = vec2Dot(relativeVelocity, normal);
+
+			if (velocityProjection > 0.0f) {
+				continue;
+			}
+			float r1PerpDotNormal = vec2Dot(r1Perp, normal);
+			float r2PerpDotNormal = vec2Dot(r2Perp, normal);
+			float impulse = 
+			(-(1.0f + elasticity) * velocityProjection) /
+			(
+					(object1->invMass + object2->invMass) +
+					(r2PerpDotNormal * r2PerpDotNormal) * object2->invInertia +
+					(r1PerpDotNormal * r1PerpDotNormal) * object1->invInertia
+			);
+			impulse = impulse / numContacts;
+			// applying velocity
+			Vector2 impulseVector = vec2Scale(normal, impulse);
+			object1->velocity = vec2Add(object1->velocity, vec2Scale(impulseVector, object1->invMass));
+			object1->angularVelocity -= vec2Cross(r1, impulseVector) * object1->invInertia;
+			object2->velocity = vec2Sub(object2->velocity, vec2Scale(impulseVector, object2->invMass));
+			object2->angularVelocity += vec2Cross(r2, impulseVector) * object2->invInertia;
 	}
-
-	float elasticity = 0.3f; // Adjust this value as needed
-	float impulse = (-(1.0f + elasticity) * velocityProjection) / (result.object1->invMass + result.object2->invMass);
-
-	Vector2 impulseVector = vec2Scale(result.normal, impulse);
-
-	result.object1->velocity = vec2Add(result.object1->velocity, vec2Scale(impulseVector, result.object1->invMass));
-	result.object2->velocity = vec2Sub(result.object2->velocity, vec2Scale(impulseVector, result.object2->invMass));
-
 }
 
 void handleCollision(physicsObject *object1) {

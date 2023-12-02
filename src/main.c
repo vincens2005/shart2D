@@ -3,8 +3,8 @@
 #include <float.h>
 #include "math.h"
 #include "include/raylib.h"
-#include "include/objects.h"
 #include "include/vectormath.h"
+#include "include/objects.h"
 #include "include/collision.h"
 
 
@@ -189,7 +189,7 @@ void resolveVelocity(physicsObject *object1, physicsObject *object2, collisionRe
 	Vector2 relativeVelocity = vec2Sub(object1->velocity, object2->velocity);
 	float velocityProjection = vec2Dot(relativeVelocity, result.normal);
 
-	float elasticity = 0.2f; // Adjust this value as needed
+	float elasticity = 0.5f; // Adjust this value as needed
 	float impulse = (-(1.0f + elasticity) * velocityProjection) / (object1->invMass + object2->invMass);
 
 	Vector2 impulseVector = vec2Scale(result.normal, impulse);
@@ -281,15 +281,13 @@ void createPhysicsRect(Vector2 center, Vector2 dimensions, float rotation, bool 
 	object.gravityStrength = gravityStrength;
 	object.isStaticBody = isStaticBody;
 	object.collisionShape = rectShape;
-	object.inertia = 1.0f;
+	object.inertia = get_inertia(&object);
 	object.invInertia = 1.0f / object.inertia;
 	object.angularVelocity = 0.0f;
-	object.staticFriction = 0.6f;
-	object.dynamicFriction = 0.4f;
+	object.staticFriction = 0.8f;
+	object.dynamicFriction = 0.5f;
+	printf("object inertia: %f", object.inertia);
 
-	if (object.isStaticBody) {
-		object.inertia = 0.0f;
-	}
 	// apply transforms _before_ adding to the array
 	applyPolygonTransform(&object);
 	objectArray[objectCount++] = object;

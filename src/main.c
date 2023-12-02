@@ -4,6 +4,7 @@
 #include "math.h"
 #include "include/raylib.h"
 #include "include/vectormath.h"
+#include "types.h"
 #include "include/objects.h"
 #include "include/collision.h"
 
@@ -22,35 +23,40 @@ float gravity = 0.6f;
 
 void applyPolygonTransform(physicsObject *object) {
 	polygonCollisionShape *poly = object->collisionShape;
-
-	poly->min.x = INFINITY;
-	poly->min.y = INFINITY;
-	poly->max.x = -INFINITY;
-	poly->max.y = -INFINITY;
+	AABB *box = &object->box;
+	box->min.x = INFINITY;
+	box->min.y = INFINITY;
+	box->max.x = -INFINITY;
+	box->max.y = -INFINITY;
 
 	for (int i = 0; i < poly->numPoints; i++) {
 		// Apply rotation (radians)
-		float rotatedX = poly->pointArray[i].x * cosf(object->rotation) - poly->pointArray[i].y * sinf(object->rotation);
-		float rotatedY = poly->pointArray[i].x * sinf(object->rotation) + poly->pointArray[i].y * cosf(object->rotation);
+		float rotatedX = poly->pointArray[i].x * cosf(object->rotation) -
+										poly->pointArray[i].y * sinf(object->rotation);
+		float rotatedY = poly->pointArray[i].x * sinf(object->rotation) +
+										poly->pointArray[i].y * cosf(object->rotation);
 
 		// Apply translation
-		poly->globalPointArray[i] = vec2Add(object->position, (Vector2){rotatedX, rotatedY});
+		poly->globalPointArray[i] = vec2Add(
+																	object->position,
+																	(Vector2){rotatedX, rotatedY}
+															);
 		// set AABB
-		if (poly->globalPointArray[i].x < poly->min.x) {
-			poly->min.x = poly->globalPointArray[i].x;
+		if (poly->globalPointArray[i].x < box->min.x) {
+			box->min.x = poly->globalPointArray[i].x;
 		}
-		if (poly->globalPointArray[i].y < poly->min.y) {
-			poly->min.y = poly->globalPointArray[i].y;
+		if (poly->globalPointArray[i].y < box->min.y) {
+			box->min.y = poly->globalPointArray[i].y;
 		}
-		if (poly->globalPointArray[i].x > poly->max.x) {
-			poly->max.x = poly->globalPointArray[i].x;
+		if (poly->globalPointArray[i].x > box->max.x) {
+			box->max.x = poly->globalPointArray[i].x;
 		}
-		if (poly->globalPointArray[i].y > poly->max.y) {
-			poly->max.y = poly->globalPointArray[i].y;
+		if (poly->globalPointArray[i].y > box->max.y) {
+			box->max.y = poly->globalPointArray[i].y;
 		}
 	}
 
-	DrawRectangleLines(poly->min.x - 2, poly->min.y - 2, poly->max.x - poly->min.x + 4, poly->max.y - poly->min.y + 4, RED);
+	DrawRectangleLines(box->min.x - 2, box->min.y - 2, box->max.x - box->min.x + 4, box->max.y - box->min.y + 4, RED);
 }
 
 void separateBodies(physicsObject *object1, physicsObject *object2, Vector2 penetration) {
@@ -91,7 +97,7 @@ void handleCollision(physicsObject *object1) {
 	for (int i = 0; i < objectCount; i++) {
 		physicsObject *object2 = &objectArray[i];
 		if (object1 != object2) {
-			if (!(AABBIntersect(object1->collisionShape, object2->collisionShape))) {
+			if (!(AABBIntersect(&object1->box, &object2->box))) {
 				continue;
 			}
 
@@ -148,24 +154,29 @@ void createPhysicsRect(Vector2 center, Vector2 dimensions, float rotation, bool 
 
 	// create the physicsObject and assign collision shape
 	physicsObject object;
-	object.mass = mass;
-
-	object.position = center;
-	object.velocity = (Vector2){0, 0};
-	object.rotation = rotation;
-	object.gravityStrength = gravityStrength;
-	object.isStaticBody = isStaticBody;
 	object.collisionShape = rectShape;
-	object.inertia = get_inertia(&object);
-	if (object.isStaticBody) {
-		object.invMass = 0.0f;
-	} else {
-		object.invMass = 1.0f / object.mass;
-	}
-	object.invInertia = 1.0f / object.inertia;
-	object.angularVelocity = 0.0f;
+
+	object.gravityStrength = gravityStrength;
 	object.staticFriction = 0.8f;
 	object.dynamicFriction = 0.5f;
+
+	object.position = center;
+	object.rotation = rotation;
+	object.velocity = (Vector2){0, 0};
+	object.angularVelocity = 0.0f;
+	object.isStaticBody = isStaticBody;
+
+	if (object.isStaticBody) {
+		object.inertia = 0.0f;
+		object.mass = 0.0f;
+		object.invMass = 0.0f;
+		object.invInertia = 0.0f;
+	} else {
+		object.inertia = getPolygonInertia(rectShape);
+		object.mass = mass;
+		object.invMass = 1.0f / object.mass;
+		object.invInertia = 1.0f / object.inertia;
+	}
 
 	// apply transforms _before_ adding to the array
 	applyPolygonTransform(&object);

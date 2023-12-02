@@ -1,2 +1,4 @@
-/*dunno if we gon need this*/
-
+typedef struct {
+	Vector2 min;
+	Vector2 max;
+} AABB;

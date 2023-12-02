@@ -1,6 +1,3 @@
-#include "types.h"
-#include "raylib.h"
-
 
 
 
@@ -8,8 +5,6 @@ typedef struct {
 	int numPoints;
 	Vector2 *pointArray;
 	Vector2 *globalPointArray;
-	Vector2 min;
-	Vector2 max;
 } polygonCollisionShape;
 
 typedef struct {
@@ -25,6 +20,7 @@ typedef struct {
 	float rotation; // thank god it's 2d
 	float gravityStrength;
 	bool isStaticBody;
+	AABB box;
 	polygonCollisionShape *collisionShape;
 } physicsObject;
 
@@ -39,18 +35,14 @@ typedef struct {
 	physicsObject *object2;
 } collisionResult;
 
+float getPolygonInertia(polygonCollisionShape *poly) {
 
-float get_inertia(physicsObject *object) {
-	if (object->isStaticBody) {
-		return 0;
-	}
-
-	Vector2 *points = object->collisionShape->pointArray;
+	Vector2 *points = poly->pointArray;
 	float inertia = 0;
 
-	for (int i = 0; i < object->collisionShape->numPoints; i++) {
+	for (int i = 0; i < poly->numPoints; i++) {
 		Vector2 point1 = points[i];
-		Vector2 point2 = points[(i + 1) % object->collisionShape->numPoints];
+		Vector2 point2 = points[(i + 1) % poly->numPoints];
 
 		float term1 = vec2Cross(point1, point1) + vec2Cross(point2, point2);
 		float term2 = vec2Cross(point1, point2);

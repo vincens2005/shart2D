@@ -47,3 +47,7 @@ Vector2 vec2Normalize(Vector2 v) {
   float length = vec2Length(v);
   return (Vector2){v.x / length, v.y / length};
 }
+
+bool vec2IsZeroApprox(Vector2 v) {
+    return fabsf(v.x) < FLT_EPSILON && fabsf(v.y) < FLT_EPSILON;
+}

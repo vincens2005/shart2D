@@ -9,11 +9,13 @@
 #include "include/collision.h"
 
 
-#define MAX_OBJECTS 10
+#define MAX_OBJECTS 20
 // amount of physics iterations per frame
 #define SUBSTEP_AMOUNT 20
 // factor to multiply position changes by
 #define SUBSTEP_FACTOR 0.05f
+
+#define POSITION_SLOP 0.01f
 
 int selectedObject = -1;
 
@@ -76,9 +78,9 @@ void separateBodies(physicsObject *object1, physicsObject *object2, Vector2 pene
 
 }
 
-void resolveVelocity(collisionResult result) {
-	physicsObject *object1 = result.object1;
-	physicsObject *object2 = result.object2;
+void resolveVelocity(collisionResult *result) {
+	physicsObject *object1 = result->object1;
+	physicsObject *object2 = result->object2;
 
 	// cache velocities before collision
 	Vector2 velocity1 = object1->velocity;
@@ -86,12 +88,12 @@ void resolveVelocity(collisionResult result) {
 	float angularVelocity1 = object1->angularVelocity;
 	float angularVelocity2 = object2->angularVelocity;
 
-	Vector2 normal = result.normal;
+	Vector2 normal = result->normal;
 
-	float elasticity = 0.2f; // TODO: put this inside of the physicsObject
+	float elasticity = 0.5f; // TODO: put this inside of the physicsObject
 
-	int numContacts  = result.numContacts;
-	Vector2 contactArray[2] = {result.contact1, result.contact2};
+	int numContacts  = result->numContacts;
+	Vector2 contactArray[2] = {result->contact1, result->contact2};
 	float impulseArray[2] = {0.0f, 0.0f};
 
 	float staticFriction = (object1->staticFriction + object2->staticFriction) * 0.5f;
@@ -157,7 +159,7 @@ void resolveVelocity(collisionResult result) {
 		Vector2 tangent = vec2Sub(relativeVelocity, vec2Scale(normal, vec2Dot(relativeVelocity, normal)));
 
 		// if the vector is nearly zero, stop this iteration
-		if (fmaxf(vec2LengthSquared(tangent) - 0.3f, 0.0f) == 0) {
+		if (vec2IsZeroApprox(tangent)) {
 			continue;
 		} else {
 			tangent = vec2Normalize(tangent);
@@ -167,12 +169,11 @@ void resolveVelocity(collisionResult result) {
 		float r2PerpDotTangent = vec2Dot(r2Perp, tangent);
 
 		float frictionImpulse = -vec2Dot(relativeVelocity, tangent) /
-									(
+									((
 										(object1->invMass + object2->invMass) +
-										(r1PerpDotTangent * r1PerpDotTangent) * object1->invInertia +
-										(r2PerpDotTangent * r2PerpDotTangent) * object2->invInertia
-									);
-		frictionImpulse /= (float)numContacts;
+										((r1PerpDotTangent * r1PerpDotTangent) * object1->invInertia) +
+										((r2PerpDotTangent * r2PerpDotTangent) * object2->invInertia)
+									) * (float)numContacts);
 
 		Vector2 frictionImpulseVector;
 
@@ -200,7 +201,7 @@ void handleCollision(physicsObject *object1) {
 			if (result.isCollided) {
 				Vector2 penetration = vec2Scale(result.normal, result.penetrationDepth);
 				separateBodies(result.object1, result.object2, penetration);
-				resolveVelocity(result);
+				resolveVelocity(&result);
 			}
 		}
 	}
@@ -238,8 +239,8 @@ void createPhysicsRect(Vector2 center, Vector2 dimensions, float rotation, bool 
 	object.collisionShape = rectShape;
 
 	object.gravityStrength = gravityStrength;
-	object.staticFriction = 0.8f;
-	object.dynamicFriction = 0.5f;
+	object.staticFriction = 0.6f;
+	object.dynamicFriction = 0.3f;
 
 	object.position = center;
 	object.rotation = rotation;
@@ -268,6 +269,8 @@ void initializeShapes() {
 	createPhysicsRect((Vector2){300, 100}, (Vector2){50, 50}, 0.0f, false, 1.0f, 1.0f);
 	createPhysicsRect((Vector2){0, 10}, (Vector2){50, 50}, 0.0f, false, 1.0f, 1.0f);
 	createPhysicsRect((Vector2){150, 10}, (Vector2){50, 50}, 0.0f, false, 1.0f, 1.0f);
+	createPhysicsRect((Vector2){500, 10}, (Vector2){50, 50}, 0.0f, false, 1.0f, 1.0f);
+	createPhysicsRect((Vector2){500, 100}, (Vector2){50, 50}, 0.0f, false, 1.0f, 1.0f);
 	createPhysicsRect((Vector2){400, 10}, (Vector2){200, 200}, 0.4f, false, 1.0f, 1.0f);
 	createPhysicsRect((Vector2){0, 500}, (Vector2){1920, 50}, 0.0f, true, 5.0f, 1.0f);
 }

@@ -15,6 +15,8 @@
 // factor to multiply position changes by
 #define SUBSTEP_FACTOR 0.125f
 
+int selectedObject = -1;
+
 physicsObject objectArray[MAX_OBJECTS];
 int objectCount = 0;
 float gravity = 0.6f;
@@ -231,14 +233,19 @@ void drawShapes() {
 	for (int i = 0; i < objectCount; i++) {
 		physicsObject *object = &objectArray[i];
 		if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
-			if (AABBIntersectPoint(&object->box, GetMousePosition())) {
-				Vector2 delta = GetMouseDelta();
-				if (object->isStaticBody) {
-					object->position = vec2Add(object->position, delta);
-					applyPolygonTransform(object);
-				} else {
-					object->velocity = delta;
-				}
+			if (AABBIntersectPoint(&object->box, GetMousePosition()) && selectedObject == -1) {
+				selectedObject = i;
+			}
+		} else {
+			selectedObject = -1;
+		}
+		if (selectedObject == i) {
+			Vector2 delta = GetMouseDelta();
+			if (object->isStaticBody) {
+				object->position = vec2Add(object->position, delta);
+				applyPolygonTransform(object);
+			} else {
+				object->velocity = delta;
 			}
 		}
 		drawPhysicsPolygon(object->collisionShape, colors[i % 12] /*inputting colors*/);

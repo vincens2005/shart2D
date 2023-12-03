@@ -3,17 +3,17 @@
 #include <float.h>
 #include "math.h"
 #include "include/raylib.h"
-#include "include/vectormath.h"
 #include "types.h"
+#include "include/vectormath.h"
 #include "include/objects.h"
 #include "include/collision.h"
 
 
 #define MAX_OBJECTS 10
 // amount of physics iterations per frame
-#define SUBSTEP_AMOUNT 8
+#define SUBSTEP_AMOUNT 20
 // factor to multiply position changes by
-#define SUBSTEP_FACTOR 0.125f
+#define SUBSTEP_FACTOR 0.05f
 
 int selectedObject = -1;
 
@@ -26,10 +26,9 @@ float gravity = 0.6f;
 void applyPolygonTransform(physicsObject *object) {
 	polygonCollisionShape *poly = object->collisionShape;
 	AABB *box = &object->box;
-	box->min.x = INFINITY;
-	box->min.y = INFINITY;
-	box->max.x = -INFINITY;
-	box->max.y = -INFINITY;
+
+	Vector2 min = (Vector2){INFINITY, INFINITY};
+	Vector2 max = (Vector2){-INFINITY, -INFINITY};
 
 	for (int i = 0; i < poly->numPoints; i++) {
 		// Apply rotation (radians)
@@ -44,21 +43,22 @@ void applyPolygonTransform(physicsObject *object) {
 																	(Vector2){rotatedX, rotatedY}
 															);
 		// set AABB
-		if (poly->globalPointArray[i].x < box->min.x) {
-			box->min.x = poly->globalPointArray[i].x;
+		if (poly->globalPointArray[i].x < min.x) {
+			min.x = poly->globalPointArray[i].x;
 		}
-		if (poly->globalPointArray[i].y < box->min.y) {
-			box->min.y = poly->globalPointArray[i].y;
+		if (poly->globalPointArray[i].y < min.y) {
+			min.y = poly->globalPointArray[i].y;
 		}
-		if (poly->globalPointArray[i].x > box->max.x) {
-			box->max.x = poly->globalPointArray[i].x;
+		if (poly->globalPointArray[i].x > max.x) {
+			max.x = poly->globalPointArray[i].x;
 		}
-		if (poly->globalPointArray[i].y > box->max.y) {
-			box->max.y = poly->globalPointArray[i].y;
+		if (poly->globalPointArray[i].y > max.y) {
+			max.y = poly->globalPointArray[i].y;
 		}
 	}
-
-	DrawRectangleLines(box->min.x - 2, box->min.y - 2, box->max.x - box->min.x + 4, box->max.y - box->min.y + 4, RED);
+	box->min = min;
+	box->max = max;
+	DrawRectangleLines(min.x - 2, min.y - 2, max.x - min.x + 4, max.y - min.y + 4, RED);
 }
 
 void separateBodies(physicsObject *object1, physicsObject *object2, Vector2 penetration) {
@@ -88,47 +88,103 @@ void resolveVelocity(collisionResult result) {
 
 	Vector2 normal = result.normal;
 
-	float elasticity = 0.5f; // TODO: put this inside of the physicsObject
+	float elasticity = 0.2f; // TODO: put this inside of the physicsObject
 
 	int numContacts  = result.numContacts;
 	Vector2 contactArray[2] = {result.contact1, result.contact2};
+	float impulseArray[2] = {0.0f, 0.0f};
+
+	float staticFriction = (object1->staticFriction + object2->staticFriction) * 0.5f;
+	float dynamicFriction = (object1->dynamicFriction + object2->dynamicFriction) * 0.5f;
 
 	for (int i = 0; i < numContacts; i++) {
-			Vector2 r1 = vec2Sub(contactArray[i], object1->position);
-			Vector2 r2 = vec2Sub(contactArray[i], object2->position);
+		Vector2 r1 = vec2Sub(contactArray[i], object1->position);
+		Vector2 r2 = vec2Sub(contactArray[i], object2->position);
 
-			Vector2 r1Perp = vec2Perp(r1);
-			Vector2 r2Perp = vec2Perp(r2);
+		Vector2 r1Perp = vec2Perp(r1);
+		Vector2 r2Perp = vec2Perp(r2);
 
-			Vector2 angularLinearVelocity1 = vec2Scale(r1Perp, angularVelocity1);
-			Vector2 angularLinearVelocity2 = vec2Scale(r2Perp, angularVelocity2);
+		Vector2 angularLinearVelocity1 = vec2Scale(r1Perp, angularVelocity1);
+		Vector2 angularLinearVelocity2 = vec2Scale(r2Perp, angularVelocity2);
 
-			Vector2 relativeVelocity = vec2Sub(
-					vec2Add(velocity1, angularLinearVelocity1),
-					vec2Add(velocity2, angularLinearVelocity2)
-			);
+		Vector2 relativeVelocity = vec2Sub(
+				vec2Add(velocity1, angularLinearVelocity1),
+				vec2Add(velocity2, angularLinearVelocity2)
+		);
 
-			float velocityProjection = vec2Dot(relativeVelocity, normal);
+		float velocityProjection = vec2Dot(relativeVelocity, normal);
 
-			if (velocityProjection > 0.0f) {
-				continue;
-			}
-			float r1PerpDotNormal = vec2Dot(r1Perp, normal);
-			float r2PerpDotNormal = vec2Dot(r2Perp, normal);
-			float impulse =
-			(-(1.0f + elasticity) * velocityProjection) /
-			(
-					(object1->invMass + object2->invMass) +
-					((r2PerpDotNormal * r2PerpDotNormal) * object2->invInertia) +
-					((r1PerpDotNormal * r1PerpDotNormal) * object1->invInertia)
-			);
-			impulse = impulse / numContacts;
-			// applying velocity
-			Vector2 impulseVector = vec2Scale(normal, impulse);
-			object1->velocity = vec2Add(object1->velocity, vec2Scale(impulseVector, object1->invMass));
-			object1->angularVelocity += vec2Cross(r1, impulseVector) * object1->invInertia;
-			object2->velocity = vec2Sub(object2->velocity, vec2Scale(impulseVector, object2->invMass));
-			object2->angularVelocity -= vec2Cross(r2, impulseVector) * object2->invInertia;
+		if (velocityProjection > 0.0f) {
+			continue;
+		}
+		float r1PerpDotNormal = vec2Dot(r1Perp, normal);
+		float r2PerpDotNormal = vec2Dot(r2Perp, normal);
+		float impulse =
+		(-(1.0f + elasticity) * velocityProjection) /
+		(
+				(object1->invMass + object2->invMass) +
+				((r2PerpDotNormal * r2PerpDotNormal) * object2->invInertia) +
+				((r1PerpDotNormal * r1PerpDotNormal) * object1->invInertia)
+		);
+		impulse /= (float)numContacts;
+		impulseArray[i] = impulse;
+		// applying velocity
+		Vector2 impulseVector = vec2Scale(normal, impulse);
+		object1->velocity = vec2Add(object1->velocity, vec2Scale(impulseVector, object1->invMass));
+		object1->angularVelocity += vec2Cross(r1, impulseVector) * object1->invInertia;
+		object2->velocity = vec2Sub(object2->velocity, vec2Scale(impulseVector, object2->invMass));
+		object2->angularVelocity -= vec2Cross(r2, impulseVector) * object2->invInertia;
+	}
+
+	velocity1 = object1->velocity;
+	velocity2 = object2->velocity;
+	angularVelocity1 = object1->angularVelocity;
+	angularVelocity2 = object2->angularVelocity;
+	for (int i = 0; i < numContacts; i++) {
+
+		Vector2 r1 = vec2Sub(contactArray[i], object1->position);
+		Vector2 r2 = vec2Sub(contactArray[i], object2->position);
+
+		Vector2 r1Perp = vec2Perp(r1);
+		Vector2 r2Perp = vec2Perp(r1);
+
+		Vector2 angularLinearVelocity1 = vec2Scale(r1Perp, angularVelocity1);
+		Vector2 angularLinearVelocity2 = vec2Scale(r2Perp, angularVelocity2);
+
+		Vector2 relativeVelocity = vec2Sub(vec2Add(velocity1, angularLinearVelocity1),
+																			vec2Add(velocity2, angularLinearVelocity2));
+
+		Vector2 tangent = vec2Sub(relativeVelocity, vec2Scale(normal, vec2Dot(relativeVelocity, normal)));
+
+		// if the vector is nearly zero, stop this iteration
+		if (fmaxf(vec2LengthSquared(tangent) - 0.3f, 0.0f) == 0) {
+			continue;
+		} else {
+			tangent = vec2Normalize(tangent);
+		}
+
+		float r1PerpDotTangent = vec2Dot(r1Perp, tangent);
+		float r2PerpDotTangent = vec2Dot(r2Perp, tangent);
+
+		float frictionImpulse = -vec2Dot(relativeVelocity, tangent) /
+									(
+										(object1->invMass + object2->invMass) +
+										(r1PerpDotTangent * r1PerpDotTangent) * object1->invInertia +
+										(r2PerpDotTangent * r2PerpDotTangent) * object2->invInertia
+									);
+		frictionImpulse /= (float)numContacts;
+
+		Vector2 frictionImpulseVector;
+
+		if (fabsf(frictionImpulse) <= impulseArray[i] * staticFriction) {
+			frictionImpulseVector = vec2Scale(tangent, frictionImpulse);
+		} else {
+			frictionImpulseVector = vec2Scale(tangent, -impulseArray[i] * dynamicFriction);
+		}
+		object1->velocity = vec2Add(object1->velocity, vec2Scale(frictionImpulseVector, object1->invMass));
+		object1->angularVelocity += vec2Cross(r1, frictionImpulseVector) * object1->invInertia;
+		object2->velocity = vec2Sub(object2->velocity, vec2Scale(frictionImpulseVector, object2->invMass));
+		object2->angularVelocity -= vec2Cross(r2, frictionImpulseVector) * object2->invInertia;
 	}
 }
 
@@ -182,8 +238,8 @@ void createPhysicsRect(Vector2 center, Vector2 dimensions, float rotation, bool 
 	object.collisionShape = rectShape;
 
 	object.gravityStrength = gravityStrength;
-	object.staticFriction = 0.8f;
-	object.dynamicFriction = 0.5f;
+	object.staticFriction = 0.6f;
+	object.dynamicFriction = 0.4f;
 
 	object.position = center;
 	object.rotation = rotation;
@@ -213,7 +269,7 @@ void initializeShapes() {
 	createPhysicsRect((Vector2){0, 10}, (Vector2){50, 50}, 0.0f, false, 1.0f, 1.0f);
 	createPhysicsRect((Vector2){150, 10}, (Vector2){50, 50}, 0.0f, false, 1.0f, 1.0f);
 	createPhysicsRect((Vector2){400, 10}, (Vector2){200, 200}, 0.4f, false, 1.0f, 1.0f);
-	createPhysicsRect((Vector2){0, 500}, (Vector2){1920, 50}, 0.0f, true, 1.0f, 1.0f);
+	createPhysicsRect((Vector2){0, 500}, (Vector2){1920, 50}, 0.0f, true, 5.0f, 1.0f);
 }
 
 void physicsTick() {
@@ -269,7 +325,7 @@ void cleanupShapes() {
 
 int main() {
 	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-	InitWindow(640, 480, "hyper realistic 2D physics engine");
+	InitWindow(640, 480, "shart2D");
 	SetTargetFPS(60); // 60 fps
 	initializeShapes();
 	while (!WindowShouldClose()) {

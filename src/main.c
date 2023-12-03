@@ -113,20 +113,20 @@ void resolveVelocity(collisionResult result) {
 			}
 			float r1PerpDotNormal = vec2Dot(r1Perp, normal);
 			float r2PerpDotNormal = vec2Dot(r2Perp, normal);
-			float impulse = 
+			float impulse =
 			(-(1.0f + elasticity) * velocityProjection) /
 			(
 					(object1->invMass + object2->invMass) +
-					(r2PerpDotNormal * r2PerpDotNormal) * object2->invInertia +
-					(r1PerpDotNormal * r1PerpDotNormal) * object1->invInertia
+					((r2PerpDotNormal * r2PerpDotNormal) * object2->invInertia) +
+					((r1PerpDotNormal * r1PerpDotNormal) * object1->invInertia)
 			);
 			impulse = impulse / numContacts;
 			// applying velocity
 			Vector2 impulseVector = vec2Scale(normal, impulse);
 			object1->velocity = vec2Add(object1->velocity, vec2Scale(impulseVector, object1->invMass));
-			object1->angularVelocity -= vec2Cross(r1, impulseVector) * object1->invInertia;
+			object1->angularVelocity += vec2Cross(r1, impulseVector) * object1->invInertia;
 			object2->velocity = vec2Sub(object2->velocity, vec2Scale(impulseVector, object2->invMass));
-			object2->angularVelocity += vec2Cross(r2, impulseVector) * object2->invInertia;
+			object2->angularVelocity -= vec2Cross(r2, impulseVector) * object2->invInertia;
 	}
 }
 

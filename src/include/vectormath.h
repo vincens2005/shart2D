@@ -1,5 +1,5 @@
 float vec2Cross(Vector2 v1, Vector2 v2) {
-  return (v1.y * v2.y) - (v1.y * v2.x);
+  return (v1.x * v2.y) - (v1.y * v2.x);
 }
 
 Vector2 vec2Negate(Vector2 v) {

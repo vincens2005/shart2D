@@ -116,6 +116,9 @@ collisionResult polygonIntersect(physicsObject *object1, physicsObject *object2)
   result.object1 = object1;
   result.object2 = object2;
   result.isCollided = false;
+  result.numContacts = 0;
+  result.contact1 = (Vector2){0,0};
+  result.contact2 = (Vector2){0,0};
   result.penetrationDepth = 0.0f;
 
   float minOverlap = INFINITY;

@@ -238,8 +238,8 @@ void createPhysicsRect(Vector2 center, Vector2 dimensions, float rotation, bool 
 	object.collisionShape = rectShape;
 
 	object.gravityStrength = gravityStrength;
-	object.staticFriction = 0.6f;
-	object.dynamicFriction = 0.4f;
+	object.staticFriction = 0.8f;
+	object.dynamicFriction = 0.5f;
 
 	object.position = center;
 	object.rotation = rotation;

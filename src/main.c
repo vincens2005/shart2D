@@ -140,10 +140,6 @@ void handleCollision(physicsObject *object1) {
 
 			collisionResult result = polygonIntersect(object1, object2);
 			if (result.isCollided) {
-				DrawCircle(result.contact1.x,result.contact1.y, 10, BLUE);
-				if (result.numContacts > 1) {
-					DrawCircle(result.contact2.x,result.contact2.y, 10, RED);
-				}
 				Vector2 penetration = vec2Scale(result.normal, result.penetrationDepth);
 				separateBodies(result.object1, result.object2, penetration);
 				resolveVelocity(result);
@@ -154,18 +150,8 @@ void handleCollision(physicsObject *object1) {
 
 
 void handleVelocity(physicsObject *object) {
-	if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
-		if (CheckCollisionPointPoly(GetMousePosition(), object->collisionShape->globalPointArray, object->collisionShape->numPoints)) {
-			Vector2 delta = GetMouseDelta();
-			object->velocity = delta;
-		}
-	}
 	// apply the position and multiply the velocity by the factor to keep it scaled properly
 	object->position = vec2Add(object->position, vec2Scale(object->velocity, SUBSTEP_FACTOR));
-	if (object->isStaticBody) {
-		object->velocity = (Vector2){0,0};
-		return;
-	}
 	object->velocity.y += (gravity * SUBSTEP_FACTOR);
 	object->rotation += (object->angularVelocity * SUBSTEP_FACTOR);
 	handleCollision(object);
@@ -231,6 +217,9 @@ void initializeShapes() {
 void physicsTick() {
 	for (int j = 0; j < objectCount; j++) {
 		physicsObject *object = &objectArray[j];
+		if (object->isStaticBody) {
+			continue;
+		}
 		handleVelocity(object);
 		applyPolygonTransform(object);
 	}
@@ -241,6 +230,17 @@ void drawShapes() {
 	Color colors[12] = {BLUE,RED,ORANGE,PURPLE,GREEN,LIME,VIOLET,DARKBLUE,SKYBLUE,MAROON,BROWN,BEIGE};
 	for (int i = 0; i < objectCount; i++) {
 		physicsObject *object = &objectArray[i];
+		if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
+			if (AABBIntersectPoint(&object->box, GetMousePosition())) {
+				Vector2 delta = GetMouseDelta();
+				if (object->isStaticBody) {
+					object->position = vec2Add(object->position, delta);
+					applyPolygonTransform(object);
+				} else {
+					object->velocity = delta;
+				}
+			}
+		}
 		drawPhysicsPolygon(object->collisionShape, colors[i % 12] /*inputting colors*/);
 	}
 }

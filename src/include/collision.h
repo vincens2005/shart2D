@@ -169,9 +169,15 @@ collisionResult polygonIntersect(physicsObject *object1, physicsObject *object2)
 }
 
 bool AABBIntersect(AABB *box1, AABB *box2) {
-    return box1->min.x < box2->max.x &&
-            box1->max.x > box2->min.x &&
-            box1->min.y < box2->max.y &&
-            box1->max.y > box2->min.y;
+    return box1->min.x <= box2->max.x &&
+            box1->max.x >= box2->min.x &&
+            box1->min.y <= box2->max.y &&
+            box1->max.y >= box2->min.y;
 }
 
+bool AABBIntersectPoint(AABB *box, Vector2 point) {
+    return point.x >= box->min.x &&
+      point.x <= box->max.x &&
+      point.y >= box->min.y &&
+      point.y <= box->max.y;
+}
